@@ -600,25 +600,26 @@ fill(uint8_t* p, int l, int r)
   rem = l % UNIT_SIZE;
   len = (r - l) + 1;
 
-  if (rem == len) {
-    for (i = l; i <= r; i++) BSET(p, i);
+  /* 左側のフラグメントの処理 */
+  if (rem > 0) {
+    msk  = (1 << rem) - 1;
+    if (rem > len) msk &= ~((1 << (rem - len)) - 1);
 
-  } else {
-    if (rem > 0) {
-      *p++ |= ((1 << rem) - 1);
-      len  -= rem;
-    }
+    *p++ |= msk;
+    len  -= rem;
+  }
 
-    n = len / UNIT_SIZE; 
-    if (n > 0) {
-      memset(p, 0xff, n);
-      p += n;
-    }
+  /* 中央のバイトコンプリートな部分の処理 */
+  n = len / UNIT_SIZE; 
+  if (n > 0) {
+    memset(p, 0xff, n);
+    p += n;
+  }
 
-    rem = len % UNIT_SIZE;
-    if (rem != 0) {
-      *p |= ~((1 << (UNIT_SIZE - rem)) - 1);
-    }
+  /* 右側のフラグメントの処理 */
+  rem = len % UNIT_SIZE;
+  if (rem != 0) {
+    *p |= ~((1 << (UNIT_SIZE - rem)) - 1);
   }
 }
 
