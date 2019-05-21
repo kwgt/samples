@@ -11,8 +11,10 @@
 
 #define DEFAULT_ERROR   __LINE__
 
+// 単位サイズはビッグエンディアンの場合のみ変更可
 #define unit_t          uint8_t
-#define UNIT_BITS       8
+#define UNIT_BYTES      sizeof(unit_t)
+#define UNIT_BITS       (UNIT_BYTES * 8)
 
 #define MAX_COORD       100
 #define BASE_MASK       (1 << (UNIT_BITS - 1))
@@ -256,6 +258,7 @@ bmap_new(int w, int h, bmap_t** dst)
 {
   int ret;
   int err;
+  int bs;
   bmap_t* obj;
   unit_t* buf;
   seed_stack_t* stk;
@@ -267,6 +270,7 @@ bmap_new(int w, int h, bmap_t** dst)
   obj = NULL;
   buf = NULL;
   stk = NULL;
+  bs  = ((w * UNIT_BYTES) / UNIT_BITS) * h;
 
   /*
    * argument check
@@ -298,7 +302,7 @@ bmap_new(int w, int h, bmap_t** dst)
       break;
     }
 
-    buf = (unit_t*)malloc((w / UNIT_BITS) * h);
+    buf = (unit_t*)malloc(bs);
     if (buf == NULL) {
       ret = DEFAULT_ERROR;
       break;
@@ -310,7 +314,7 @@ bmap_new(int w, int h, bmap_t** dst)
       break;
     }
 
-    memset(buf, 0, (w / UNIT_BITS) * h);
+    memset(buf, 0, bs * UNIT_BYTES);
   } while (0);
 
   /*
@@ -319,7 +323,7 @@ bmap_new(int w, int h, bmap_t** dst)
   if (!ret) {
     obj->buf = buf;
     obj->w   = w;
-    obj->s   = w / 8;
+    obj->s   = w / UNIT_BITS;
     obj->h   = h;
     obj->stk = stk;
 
@@ -638,10 +642,15 @@ fill(unit_t* p, int l, int r)
   /* 左側のフラグメントの処理 */
   if (rem > 0) {
     msk  = (1 << rem) - 1;
-    if (rem > len) msk &= ~((1 << (rem - len)) - 1);
+    if (rem > len) {
+      msk &= ~((1 << (rem - len)) - 1);
+      len  = 0;
+
+    } else {
+      len -= rem;
+    }
 
     *p++ |= msk;
-    len  -= rem;
   }
 
   /* 中央のバイトコンプリートな部分の処理 */
@@ -735,13 +744,9 @@ bmap_fill_polygon(bmap_t* ptr, coord_t va[], size_t n)
       if (va[i].y < min_y) min_y = va[i].y;
       if (va[i].y > max_y) max_y = va[i].y;
     }
-
-    if (min_y == max_y) {
-      ret = DEFAULT_ERROR;
-    }
   }
 
-  if (!ret) {
+  if (!ret && min_y != max_y) {
     for (y = min_y; y <= max_y; y++) {
       j = 0;
 
@@ -970,7 +975,7 @@ main(int argc, char* argv[])
   bmap_t* bm;
   void* msk;
 
-  const unit_t header[] = {
+  const uint8_t header[] = {
     0x42, 0x4d,               // bfType
     0x20, 0x00, 0x02, 0x00,   // bfSize
     0x00, 0x00,               // bfReserved1
