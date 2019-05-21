@@ -9,12 +9,15 @@
 #include <stdint.h>
 #include <string.h>
 
-#define ERROR       __LINE__
+#define DEFAULT_ERROR   __LINE__
 
-#define UNIT_SIZE       8
-#define BASE_MASK       (1 << (UNIT_SIZE - 1))
-#define INDEX(n)        ((n) / UNIT_SIZE)
-#define MASK(n)         (BASE_MASK >> ((n) % UNIT_SIZE))
+#define unit_t          uint8_t
+#define UNIT_BITS       8
+
+#define MAX_COORD       100
+#define BASE_MASK       (1 << (UNIT_BITS - 1))
+#define INDEX(n)        ((n) / UNIT_BITS)
+#define MASK(n)         (BASE_MASK >> ((n) % UNIT_BITS))
 #define BTEST(p,n)      (((p)[INDEX(n)]) &  MASK(n))
 #define BSET(p,n)       (((p)[INDEX(n)]) |= MASK(n))
                      
@@ -67,7 +70,7 @@ seed_stack_new(size_t n, seed_stack_t** dst)
    * argument check
    */
   if (dst == NULL) {
-    ret = ERROR;
+    ret = DEFAULT_ERROR;
   }
 
   /*
@@ -76,13 +79,13 @@ seed_stack_new(size_t n, seed_stack_t** dst)
   if (!ret) do {
     obj = ALLOC(seed_stack_t);
     if (obj == NULL) {
-      ret = ERROR;
+      ret = DEFAULT_ERROR;
       break;
     }
 
     buf = NALLOC(seed_t, n);
     if (buf == NULL) {
-      ret = ERROR;
+      ret = DEFAULT_ERROR;
       break;
     }
 
@@ -125,7 +128,7 @@ seed_stack_destroy(seed_stack_t* ptr)
    * argument check
    */
   if (ptr == NULL) {
-    ret = ERROR;
+    ret = DEFAULT_ERROR;
   }
 
   /*
@@ -158,12 +161,12 @@ seed_stack_push(seed_stack_t* ptr, seed_t* s)
    */
   do {
     if (ptr == NULL) {
-      ret = ERROR;
+      ret = DEFAULT_ERROR;
       break;
     }
 
     if (s == NULL) {
-      ret = ERROR;
+      ret = DEFAULT_ERROR;
       break;
     }
   } while (0);
@@ -177,7 +180,7 @@ seed_stack_push(seed_stack_t* ptr, seed_t* s)
       buf = NREALLOC(ptr->buf, cap);
 
       if (buf == NULL) {
-        ret = ERROR;
+        ret = DEFAULT_ERROR;
         break;
       }
 
@@ -219,12 +222,12 @@ seed_stack_pop(seed_stack_t* ptr, seed_t* s)
    */
   do {
     if (ptr == NULL) {
-      ret = ERROR;
+      ret = DEFAULT_ERROR;
       break;
     }
 
     if (s == NULL) {
-      ret = ERROR;
+      ret = DEFAULT_ERROR;
       break;
     }
   } while (0);
@@ -240,7 +243,7 @@ seed_stack_pop(seed_stack_t* ptr, seed_t* s)
 }
 
 typedef struct {
-  uint8_t* buf;
+  unit_t* buf;
   int w;      // as width
   int s;      // as stride
   int h;      // as height
@@ -254,7 +257,7 @@ bmap_new(int w, int h, bmap_t** dst)
   int ret;
   int err;
   bmap_t* obj;
-  uint8_t* buf;
+  unit_t* buf;
   seed_stack_t* stk;
 
   /*
@@ -269,18 +272,18 @@ bmap_new(int w, int h, bmap_t** dst)
    * argument check
    */
   do {
-    if (w < 64 || (w % UNIT_SIZE) != 0) {
-      ret = ERROR;
+    if (w < 64 || (w % UNIT_BITS) != 0) {
+      ret = DEFAULT_ERROR;
       break;
     }
 
     if (h < 64) {
-      ret = ERROR;
+      ret = DEFAULT_ERROR;
       break;
     }
 
     if (dst == NULL) {
-      ret = ERROR;
+      ret = DEFAULT_ERROR;
       break;
     }
   } while (0);
@@ -291,23 +294,23 @@ bmap_new(int w, int h, bmap_t** dst)
   if (!ret) do {
     obj = ALLOC(bmap_t);
     if (obj == NULL) {
-      ret = ERROR;
+      ret = DEFAULT_ERROR;
       break;
     }
 
-    buf = (uint8_t*)malloc((w / UNIT_SIZE) * h);
+    buf = (unit_t*)malloc((w / UNIT_BITS) * h);
     if (buf == NULL) {
-      ret = ERROR;
+      ret = DEFAULT_ERROR;
       break;
     }
 
     err = seed_stack_new(100, &stk);
     if (err) {
-      ret = ERROR;
+      ret = DEFAULT_ERROR;
       break;
     }
 
-    memset(buf, 0, (w / UNIT_SIZE) * h);
+    memset(buf, 0, (w / UNIT_BITS) * h);
   } while (0);
 
   /*
@@ -350,12 +353,12 @@ bmap_strip(bmap_t* ptr, void** dst)
    */
   do {
     if (ptr == NULL) {
-      ret = ERROR;
+      ret = DEFAULT_ERROR;
       break;
     }
 
     if (dst == NULL) {
-      ret = ERROR;
+      ret = DEFAULT_ERROR;
       break;
     }
   } while (0);
@@ -413,37 +416,37 @@ bmap_draw_line(bmap_t* ptr, coord_t* c1, coord_t* c2)
    */
   do {
     if (ptr == NULL) {
-      ret = ERROR;
+      ret = DEFAULT_ERROR;
       break;
     }
 
     if (c1 == NULL) {
-      ret = ERROR;
+      ret = DEFAULT_ERROR;
       break;
     }
 
     if (c1->x < 0 || c1->x >= ptr->w) {
-      ret = ERROR;
+      ret = DEFAULT_ERROR;
       break;
     }
 
     if (c1->y < 0 || c1->y >= ptr->h) {
-      ret = ERROR;
+      ret = DEFAULT_ERROR;
       break;
     }
 
     if (c2 == NULL) {
-      ret = ERROR;
+      ret = DEFAULT_ERROR;
       break;
     }
 
     if (c2->x < 0 || c2->x >= ptr->w) {
-      ret = ERROR;
+      ret = DEFAULT_ERROR;
       break;
     }
 
     if (c2->y < 0 || c2->y >= ptr->h) {
-      ret = ERROR;
+      ret = DEFAULT_ERROR;
       break;
     }
   } while (0);
@@ -530,7 +533,7 @@ bmap_draw_line(bmap_t* ptr, coord_t* c1, coord_t* c2)
 }
 
 static int
-bmap_draw_polygon(bmap_t* ptr, coord_t coords[], size_t n)
+bmap_draw_polygon(bmap_t* ptr, coord_t va[], size_t n)
 {
   int ret;
   int i;
@@ -545,28 +548,28 @@ bmap_draw_polygon(bmap_t* ptr, coord_t coords[], size_t n)
    */
   do {
     if (ptr == NULL) {
-      ret = ERROR;
+      ret = DEFAULT_ERROR;
       break;
     }
 
-    if (coords == NULL) {
-      ret = ERROR;
+    if (va == NULL) {
+      ret = DEFAULT_ERROR;
       break;
     }
 
     if (n <= 2) {
-      ret = ERROR;
+      ret = DEFAULT_ERROR;
       break;
     }
 
     for (i = 0; i < (int)n; i++) {
-      if (coords[i].x < 0 || coords[i].x >= ptr->w) {
-        ret = ERROR;
+      if (va[i].x < 0 || va[i].x >= ptr->w) {
+        ret = DEFAULT_ERROR;
         break;
       }
 
-      if (coords[i].y < 0 || coords[i].y >= ptr->h) {
-        ret = ERROR;
+      if (va[i].y < 0 || va[i].y >= ptr->h) {
+        ret = DEFAULT_ERROR;
         break;
       }
     }
@@ -579,25 +582,57 @@ bmap_draw_polygon(bmap_t* ptr, coord_t coords[], size_t n)
     n--;
 
     for (i = 0; i < (int)n; i++) {
-      bmap_draw_line(ptr, coords + i, coords + (i + 1));
+      bmap_draw_line(ptr, va + i, va + (i + 1));
     }
 
-    bmap_draw_line(ptr, coords + 0, coords + n);
+    bmap_draw_line(ptr, va + 0, va + n);
   }
 
   return ret;
 }
 
+#define SHRINK(n)       ((n * 10) / 13)
+#define SWAP(a,b)       do {int t; t = b; b = a; a = t;} while(0)
+
 static void
-fill(uint8_t* p, int l, int r)
+sort(int* a, size_t n)
+{
+  int h;
+  int f;
+  int i;
+
+  /*
+   * sort by ascending order
+   */
+
+  h = n;
+
+  while (h > 1 || f) {
+    f = 0;
+    h = SHRINK(h);
+
+    if (h == 9 || h == 10) h = 11;
+
+    for (i = 0; i < ((int)n - h); i++) {
+      if (a[i] > a[i + h]) {
+        SWAP(a[i], a[i + h]);
+        f = !0;
+      }
+    }
+  }
+}
+
+static void
+fill(unit_t* p, int l, int r)
 {
   int rem;
-  uint8_t msk;
+  unit_t msk;
   int len;
   int n;
   int i;
 
-  rem = l % UNIT_SIZE;
+  p  += (l / UNIT_BITS);
+  rem = UNIT_BITS - (l % UNIT_BITS);
   len = (r - l) + 1;
 
   /* 左側のフラグメントの処理 */
@@ -610,17 +645,152 @@ fill(uint8_t* p, int l, int r)
   }
 
   /* 中央のバイトコンプリートな部分の処理 */
-  n = len / UNIT_SIZE; 
+  n = len / UNIT_BITS; 
   if (n > 0) {
     memset(p, 0xff, n);
     p += n;
   }
 
   /* 右側のフラグメントの処理 */
-  rem = len % UNIT_SIZE;
+  rem = len % UNIT_BITS;
   if (rem != 0) {
-    *p |= ~((1 << (UNIT_SIZE - rem)) - 1);
+    *p |= ~((1 << (UNIT_BITS - rem)) - 1);
   }
+}
+
+static int
+bmap_fill_polygon(bmap_t* ptr, coord_t va[], size_t n)
+{
+  int ret;
+  int* buf;
+  int i;
+  int j;
+  int x;
+  int y;
+  int min_y;
+  int max_y;
+  int d1;
+  int d2;
+
+  coord_t* p1;
+  coord_t* p2;
+  coord_t* pt;
+
+  /*
+   * initialize 
+   */
+  ret = 0;
+  buf = NULL;
+
+  /*
+   * argument check
+   */
+  do {
+    if (ptr == NULL) {
+      ret = DEFAULT_ERROR;
+      break;
+    }
+
+    if (va == NULL) {
+      ret = DEFAULT_ERROR;
+      break;
+    }
+
+    if (n <= 2 || n > MAX_COORD) {
+      ret = DEFAULT_ERROR;
+      break;
+    }
+
+    for (i = 0; i < (int)n; i++) {
+      if (va[i].x < 0 || va[i].x >= ptr->w) {
+        ret = DEFAULT_ERROR;
+        break;
+      }
+
+      if (va[i].y < 0 || va[i].y >= ptr->h) {
+        ret = DEFAULT_ERROR;
+        break;
+      }
+    }
+  } while(0);
+
+  /*
+   * alloc work buffer
+   */
+  if (!ret) {
+    buf = NALLOC(int, MAX_COORD);
+    if (buf == NULL) {
+      ret = DEFAULT_ERROR;
+    }
+  }
+
+  /*
+   * do solid scan
+   */
+  if (!ret) {
+    min_y = ptr->h;
+    max_y = 0;
+
+    for (i = 0; i < (int)n; i++) {
+      if (va[i].y < min_y) min_y = va[i].y;
+      if (va[i].y > max_y) max_y = va[i].y;
+    }
+
+    if (min_y == max_y) {
+      ret = DEFAULT_ERROR;
+    }
+  }
+
+  if (!ret) {
+    for (y = min_y; y <= max_y; y++) {
+      j = 0;
+
+      for (i = 0; i < n; i++) {
+        p1 = va + i;
+        p2 = va + ((i + 1) % n);
+
+        // 水平線になる場合は除外
+        if (p1->y == p2->y) continue;
+
+        // 奇数交点を避ける
+        if (p2->y == y) {
+          pt = va + ((i + 2) % n); 
+          d1 = p2->y - p1->y;
+          d2 = pt->y - p2->y;
+
+          if (((d1 < 0) && (d2 < 0)) || ((d1 > 0) && (d2 > 0))) {
+            continue;
+          }
+        }
+
+        // スキャンラインが範囲外の場合は除外
+        if (p1->y > p2->y) {
+          pt = p1;
+          p1 = p2;
+          p2 = pt;
+        }
+
+        if (y < p1->y || y > p2->y) continue;
+
+        // スキャンラインとの交点を計算
+        x = (((p2->x - p1->x) * (y - p1->y)) / (p2->y - p1->y)) + p1->x;
+        buf[j++] = x;
+      }
+
+      sort(buf, j);
+
+      for (i = 0; i < j; i += 2) {
+        fill(ptr->buf + (ptr->s * y), buf[i], buf[i + 1]);
+      }
+    }
+  }
+
+  /*
+   * post process
+   */
+  if (buf) free(buf);
+
+  return ret;
 }
 
 static int
@@ -628,7 +798,7 @@ scan_line(bmap_t* ptr, int l, int r, int y, int py)
 {
   int ret;
   int err;
-  uint8_t* lp;
+  unit_t* lp;
   seed_t s;
 
   ret = 0;
@@ -651,7 +821,7 @@ scan_line(bmap_t* ptr, int l, int r, int y, int py)
     /* シードをスタックに積む */
     err = seed_stack_push(ptr->stk, &s);
     if (err) {
-      ret = ERROR;
+      ret = DEFAULT_ERROR;
       break;
     }
   }
@@ -666,7 +836,7 @@ bmap_fill_closed(bmap_t* ptr, int x, int y)
   int err;
   int i;
   seed_t s;
-  uint8_t* lp;
+  unit_t* lp;
 
   /*
    * initialize
@@ -678,17 +848,17 @@ bmap_fill_closed(bmap_t* ptr, int x, int y)
    */
   do {
     if (ptr == NULL) {
-      ret = ERROR;
+      ret = DEFAULT_ERROR;
       break;
     }
 
     if (x < 0 || x >= ptr->w) {
-      ret = ERROR;
+      ret = DEFAULT_ERROR;
       break;
     }
 
     if (y < 0 || y >= ptr->h) {
-      ret = ERROR;
+      ret = DEFAULT_ERROR;
       break;
     }
   } while (0);
@@ -709,7 +879,7 @@ bmap_fill_closed(bmap_t* ptr, int x, int y)
 
     err = seed_stack_push(ptr->stk, &s);
     if (err) {
-      ret = ERROR;
+      ret = DEFAULT_ERROR;
       break;
     }
 
@@ -744,20 +914,20 @@ bmap_fill_closed(bmap_t* ptr, int x, int y)
         if (ny == s.py) {
           err = scan_line(ptr, s.l,  ls, ny, s.y);
           if (err) {
-            ret = ERROR;
+            ret = DEFAULT_ERROR;
             break;
           }
 
           err = scan_line(ptr,  rs, s.r, ny, s.y);
           if (err) {
-            ret = ERROR;
+            ret = DEFAULT_ERROR;
             break;
           }
 
         } else {
           err = scan_line(ptr, s.l, s.r, ny, s.y);
           if (err) {
-            ret = ERROR;
+            ret = DEFAULT_ERROR;
             break;
           }
         }
@@ -769,20 +939,20 @@ bmap_fill_closed(bmap_t* ptr, int x, int y)
         if (ny == s.py) {
           err = scan_line(ptr, s.l,  ls, ny, s.y);
           if (err) {
-            ret = ERROR;
+            ret = DEFAULT_ERROR;
             break;
           }
 
           err = scan_line(ptr,  rs, s.r, ny, s.y);
           if (err) {
-            ret = ERROR;
+            ret = DEFAULT_ERROR;
             break;
           }
 
         } else {
           err = scan_line(ptr, s.l, s.r, ny, s.y);
           if (err) {
-            ret = ERROR;
+            ret = DEFAULT_ERROR;
             break;
           }
         }
@@ -800,7 +970,7 @@ main(int argc, char* argv[])
   bmap_t* bm;
   void* msk;
 
-  const uint8_t header[] = {
+  const unit_t header[] = {
     0x42, 0x4d,               // bfType
     0x20, 0x00, 0x02, 0x00,   // bfSize
     0x00, 0x00,               // bfReserved1
@@ -819,9 +989,9 @@ main(int argc, char* argv[])
   };
 
   const coord_t polygon[] = {
-    {  3,   0},
-    {131, 128},
-    {  3, 128}
+    { 20,   0},
+    { 300,  150},
+    {  0,  300}
   };
     
   bm  = NULL;
@@ -832,11 +1002,16 @@ main(int argc, char* argv[])
 
   //err = bmap_draw_line(bm, polygon + 0, polygon + 1);
   //printf("%d\n", err);
+#if 0
   err = bmap_draw_polygon(bm, polygon, N(polygon));
   printf("%d\n", err);
 
   err = bmap_fill_closed(bm, 23, 64);
   printf("%d %p\n", err, msk);
+#endif
+
+  err = bmap_fill_polygon(bm, polygon, N(polygon));
+  printf("%d\n", err);
 
   err = bmap_strip(bm, &msk);
   printf("%d %p\n", err, msk);
