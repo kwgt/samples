@@ -314,7 +314,7 @@ bmap_new(int w, int h, bmap_t** dst)
       break;
     }
 
-    memset(buf, 0, bs * UNIT_BYTES);
+    memset(buf, 0, bs);
   } while (0);
 
   /*
@@ -656,7 +656,7 @@ fill(unit_t* p, int l, int r)
   /* 中央のバイトコンプリートな部分の処理 */
   n = len / UNIT_BITS; 
   if (n > 0) {
-    memset(p, 0xff, n);
+    memset(p, 0xff, n * UNIT_BYTES);
     p += n;
   }
 
