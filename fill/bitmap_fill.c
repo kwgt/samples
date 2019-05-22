@@ -744,9 +744,7 @@ bmap_fill_polygon(bmap_t* ptr, coord_t va[], size_t n)
       if (va[i].y < min_y) min_y = va[i].y;
       if (va[i].y > max_y) max_y = va[i].y;
     }
-  }
 
-  if (!ret && min_y != max_y) {
     for (y = min_y; y <= max_y; y++) {
       j = 0;
 
@@ -777,13 +775,12 @@ bmap_fill_polygon(bmap_t* ptr, coord_t va[], size_t n)
 
         if (y < p1->y || y > p2->y) continue;
 
-        // スキャンラインとの交点を計算
-        x = (((p2->x - p1->x) * (y - p1->y)) / (p2->y - p1->y)) + p1->x;
-        buf[j++] = x;
+        // スキャンラインとの交点を計算してワークバッファに登録
+        buf[j++] = (((p2->x - p1->x) * (y - p1->y)) / (p2->y - p1->y)) + p1->x;
       }
 
+      // 結果をソートして順にビットフィルを行う
       sort(buf, j);
-
       for (i = 0; i < j; i += 2) {
         fill(ptr->buf + (ptr->s * y), buf[i], buf[i + 1]);
       }
