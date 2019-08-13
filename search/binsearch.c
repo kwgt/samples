@@ -1,28 +1,31 @@
 ﻿int
 binsearch(double* a, size_t n, double v)
 {
+  int ret;
   int l;
   int r;
-  int ret;
+  int i;
 
-  l = 0;
-  r = n - 1;
+  ret = -1;
+  l   = 0;
+  r   = n - 1;
 
-  while (1) {
-    ret = (l + r) / 2;
+  while (r >= l) {
+    i = (l + r) / 2;
 
     if (r <= l) break;
 
-    if (a[ret] < v) {
-      l = ret + 1;
+    if (a[i] < v) {
+      l = i + 1;
       continue;
     } 
     
-    if (a[ret] > v) {
-      r = ret - 1;
+    if (a[i] > v) {
+      r = i - 1;
       continue;
     }
 
+    ret = i;
     break;
   }
 

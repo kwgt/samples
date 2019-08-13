@@ -18,9 +18,14 @@ combsort11(double* a, size_t n)
 
   h = n;
 
-  while (h > 1 || f) {
+  do {
+    if (h > 1) {
+      h = SHRINK(h);
+    } else if (!f) {
+      break;
+    }
+
     f = 0;
-    h = SHRINK(h);
 
     if (h == 9 || h == 10) h = 11;
 
@@ -30,6 +35,6 @@ combsort11(double* a, size_t n)
         f = !0;
       }
     }
-  }
+  } while (1);
 }
 
