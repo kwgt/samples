@@ -6,8 +6,13 @@
 #include <fcntl.h>
 #include <time.h>
 
-void planer_yuv_to_rgb(uint8_t* y, uint8_t* u, uint8_t* v,
-                                  int wd, int ht, uint8_t* rgb);
+#define DATABASE  "test"
+#define WIDTH     160
+#define HEIGHT    160
+#endif
+
+void i420_to_rgb(uint8_t* y, uint8_t* u, uint8_t* v,
+                             int wd, int ht, uint8_t* rgb);
 
 typedef struct {
   long long tm;
@@ -111,23 +116,23 @@ main(int argc, char* argv[])
   tmmes_t tm;
   FILE* fp;
 
-  read_file("data/test.Y", &y, NULL);
-  read_file("data/test.U", &u, NULL);
-  read_file("data/test.V", &v, NULL);
+  read_file("data/" DATABASE ".Y", &y, NULL);
+  read_file("data/" DATABASE ".U", &u, NULL);
+  read_file("data/" DATABASE ".V", &v, NULL);
 
-  rgb = malloc(160 * 160 * 3);
+  rgb = malloc(WIDTH * HEIGHT * 3);
 
   start_timer(&tm);
-  for (i = 0; i < 10000; i++) {
-    planer_yuv_to_rgb(y, u, v, 160, 160, rgb);
+  for (i = 0; i < 200; i++) {
+    i420_to_rgb(y, u, v, WIDTH, HEIGHT, rgb);
   }
   stop_timer(&tm);
 
   fprintf(stderr, "%10.2f msec\n", tm.tm / 1000000.0);
 
   fp = fopen("test.ppm", "wb");
-  fprintf(fp, "P6\n#test\n160 160\n255\n");
-  fwrite(rgb, 160 * 160 * 3, 1, fp);
+  fprintf(fp, "P6\n#test\n%d %d\n255\n", WIDTH, HEIGHT);
+  fwrite(rgb, WIDTH * HEIGHT * 3, 1, fp);
   fclose(fp);
 
   free(rgb);

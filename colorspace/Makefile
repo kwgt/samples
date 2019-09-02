@@ -1,8 +1,13 @@
+CFLAGS  += -g -O3
+
 # armv8l
-CFLAGS += -g -O3 -ftree-vectorize
+CFLAGS  += -ftree-vectorize -DENABLE_NEON
 
 # armv7l
-#CFLAGS += -O0 -mneon -march=armv7-a
+#CFLAGS  += -mneon -march=armv7-a -DENABLE_NEON
+
+CFLAGS  += -fopenmp
+LDFLAGS += -fopenmp
 
 test: test.o yuv_to_rgb.o
 
