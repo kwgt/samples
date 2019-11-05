@@ -1,0 +1,13 @@
+@ユークリッド互除法
+LBL "GCD"
+X>Y?
+X<>Y
+X#0?
+GTO A
+X<>Y
+RTN
+LBL A
+STO ST Z
+MOD
+GTO "GCD"
+END

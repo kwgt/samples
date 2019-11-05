@@ -1,0 +1,16 @@
+@standard normal distribution
+LBL "STDNRM"
+MVAR "X"
+2
+PI
+*
+SQRT
+1/X
+RCL "X"
+X^2
+2
+/
++/-
+E^X
+*
+END
