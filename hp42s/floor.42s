@@ -1,0 +1,24 @@
+@ 床関数
+LBL "FLOOR"
+  X>=0?
+  GTO 00
+
+  @負の数の場合
+  FP
+  X#0?
+  GTO 01
+  0
+  GTO 02
+  LBL 01
+  1
+  LBL 02
+  X<>Y
+  RCL- ST L
+  +
+  +/-
+  RTN
+
+  @正の数の場合
+  LBL 00
+  IP
+  RTN

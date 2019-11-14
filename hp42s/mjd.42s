@@ -1,0 +1,137 @@
+@
+@ 修正ユリウス通日
+@
+LBL "MJD"
+  @   statck:
+  @     X:YYYY.MMDD
+
+  @
+  @ 1/2月は前年の13/14月に変換
+  @
+  XEQ B
+  2
+  -
+  X>0?
+  GTO 00
+  R\v
+  1
+  -
+  0.12
+  +
+  0  @ dummy
+
+LBL 00
+  R\v
+
+  @
+  @ ここから計算
+  @
+  XEQ A
+  365.25
+  *
+  IP
+  X<>Y
+
+  @   statck:
+  @     Y:FLOOR(YYYY * 365.25)
+  @     X:YYYY.MMDD
+
+  XEQ A
+  400
+  /
+  IP
+  STO+ ST Z
+  R\v
+
+  @   statck:
+  @     Y:YYYY' + FLOOR(YYYY / 400)
+  @     X:YYYY.MMDD
+
+  XEQ A
+  100
+  /
+  IP
+  STO- ST Z
+  R\v
+
+
+  @   statck:
+  @     Y:YYYY' - FLOOR(YYYY / 100)
+  @     X:YYYY.MMDD
+
+  XEQ B
+  2
+  -
+  30.59
+  * 
+  IP
+  STO+ ST Z 
+  R\v
+
+  @   statck:
+  @     Y:YYYY' + FLOOR(30.59(m - 2))
+  @     X:YYYY.MMDD
+
+  XEQ C
+  678912
+  -
+  STO+ ST Z
+  R\v
+  X<>Y
+
+  @   statck:
+  @     Y:YYYY.MMDD
+  @     X:ANSWER
+
+  RTN
+
+
+@
+@ 年を取り出すローカル関数
+@
+LBL A
+  @   statck:
+  @     X:YYYY.MMDD
+  @       |
+  @       V
+  @     Y:YYYY.MMDD
+  @     X:YYYY
+  ENTER
+  IP
+  RTN
+
+@
+@ 月を取り出すローカル関数
+@
+LBL B
+  @   statck:
+  @     X:YYYY.MMDD
+  @       |
+  @       V
+  @     Y:YYYY.MMDD
+  @     X:MM
+  ENTER
+  FP
+  100
+  *
+  IP
+  RTN
+
+@
+@ 日を取り出すローカル関数
+@
+LBL C
+  @   statck:
+  @     X:YYYY.MMDD
+  @       |
+  @       V
+  @     Y:YYYY.MMDD
+  @     X:DD
+  ENTER 	@ DM42の場合、何故かこのENTERが無視される(Free42では大丈夫）
+  ENTER
+  100
+  *
+  FP
+  100
+  *
+  RTN
