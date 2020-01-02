@@ -13,7 +13,7 @@ until ARGF.eof
     print "\r#{fc}"
 
     if not slice.nil?
-      IO.binwrite("%04d.264" % fc, slice)
+      IO.binwrite("%04d.nal" % fc, slice)
       fc += 1
     end
 

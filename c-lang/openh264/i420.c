@@ -3,6 +3,10 @@
 #include <stdint.h>
 #include <string.h>
 
+#ifdef ENABLE_AVX
+#include "avx.h"
+#endif /* defined(ENABLE_AVX) */
+
 #include "i420.h"
 
 #define ALLOC(t)        ((t*)malloc(sizeof(t)))
@@ -172,6 +176,206 @@ i420_update(i420_t* ptr, int width, int height, int y_stride, int uv_stride)
   return ret;
 }
 
+#ifdef ENABLE_AVX
+
+#define DEBUG(r) \
+        printf("%016llx %016llx %016llx %016llx\n", r[0], r[1], r[2], r[3])
+
+int
+i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
+{
+  int ret;
+  int i;
+  int j;
+  int k;
+
+  uint8_t* dst1;    // destination pointer for even line
+  uint8_t* dst2;    // destination pointer for odd line
+
+  uint8_t* yp1;     // y-plane pointer for even line
+  uint8_t* yp2;     // y-plane pointer for odd line
+  uint8_t* up;      // u-plane pointer
+  uint8_t* vp;      // v-plane pointer
+
+  /*
+   * initialize
+   */
+  ret = 0;
+
+  /*
+   * argument check
+   */
+  do {
+    if (ptr == NULL) {
+      ret = DEFAULT_ERROR;
+      break;
+    }
+
+    if (src_y == NULL) {
+      ret = DEFAULT_ERROR;
+      break;
+    }
+
+    if (src_u == NULL) {
+      ret = DEFAULT_ERROR;
+      break;
+    }
+
+    if (src_v == NULL) {
+      ret = DEFAULT_ERROR;
+      break;
+    }
+  } while (0);
+
+  /*
+   * do convert
+   *
+   * 4x2ピクセルを1ユニットとして処理。ピクセルに対するレーン配置は以下の通り
+   *
+   * 0 1 2 3
+   * 4 5 6 7
+   *
+   *
+   * YUVからRGBへの変換式は以下の通り
+   *
+   *   R = (1.164f * (y - 16)) + (1.596f * (v - 128))
+   *   G = (1.164f * (y - 16)) - (0.813f * (v - 128)) - (0.391f * (u - 128))
+   *   B = (1.164f * (y - 16)) + (2.018f * (u - 128))
+   *
+   * 上記を、整数演算化による高速化を狙って以下の様に実装する。
+   *
+   *   R = ((1192 * (y - 16)) + (1634 * (v - 128))) >> 10
+   *   G = ((1192 * (y - 16)) - ( 833 * (v - 128)) - (400 * (u - 128))) >> 10
+   *   B = ((1192 * (y - 16)) + (2066 * (u - 128))) >> 10
+   */
+  if (!ret) {
+    __m256i tl;   // as "temporary for load operation"
+    __m256i vy;
+    __m256i vr;
+    __m256i vg;
+    __m256i vb;
+
+    __m256i c16; 
+    __m256i c128; 
+    __m256i c1192; 
+    __m256i c400; 
+    __m256i c2066; 
+    __m256i c1634; 
+    __m256i c833; 
+    __m256i c0; 
+    __m256i c255; 
+
+    dst1  = ptr->plane;
+    dst2  = dst1 + ptr->stride;
+
+    c16   = _mm256_set1_epi32(16);
+    c128  = _mm256_set1_epi32(128);
+    c1192 = _mm256_set1_epi32(1192);
+    c400  = _mm256_set1_epi32(400);
+    c2066 = _mm256_set1_epi32(2066);
+    c1634 = _mm256_set1_epi32(1634);
+    c833  = _mm256_set1_epi32(833);
+		c0    = _mm256_setzero_pd();
+		c255  = _mm256_set1_epi32(255);
+
+    for (i = 0; i < ptr->height; i += 2) {
+      yp1 = src_y;
+      yp2 = src_y + ptr->y_stride;
+      up  = src_u;
+      vp  = src_v;
+
+      for (j = 0; j < ptr->width; j += 4) {
+        /*
+         * Y
+         */
+        tl = _mm256_set_epi32(yp2[3], yp2[2], yp2[1], yp2[0],
+                              yp1[3], yp1[2], yp1[1], yp1[0]);
+
+        vy = _mm256_sub_epi32(tl, c16);
+				vy = _mm256_mullo_epi32(vy, c1192);
+
+        /*
+         * U
+         */
+        tl = _mm256_set_epi32(up[1], up[1], up[0], up[0],
+															up[1], up[1], up[0], up[0]);
+
+				tl = _mm256_sub_epi32(tl, c128);
+
+				vg = _mm256_mullo_epi32(tl, c400);
+
+				vb = _mm256_mullo_epi32(tl, c2066);
+				vb = _mm256_add_epi32(vy, vb);
+
+        /*
+         * V
+         */
+        tl = _mm256_set_epi32(vp[1], vp[1], vp[0], vp[0],
+															vp[1], vp[1], vp[0], vp[0]);
+				tl = _mm256_sub_epi32(tl, c128);
+
+				vr = _mm256_mullo_epi32(tl, c1634);
+				vr = _mm256_add_epi32(vy, vr);
+
+				tl = _mm256_mullo_epi32(tl, c833);
+				vg = _mm256_sub_epi32(tl, vg);
+				vg = _mm256_sub_epi32(vy, vg);
+
+				/*
+         * post process 
+         */
+        vr = _mm256_srai_epi32(vr, 10);
+        vr = _mm256_max_epi32(vr, c0);
+        vr = _mm256_min_epi32(vr, c255);
+
+        vg = _mm256_srai_epi32(vg, 10);
+        vg = _mm256_max_epi32(vg, c0);
+        vg = _mm256_min_epi32(vg, c255);
+
+        vb = _mm256_srai_epi32(vb, 10);
+        vb = _mm256_max_epi32(vb, c0);
+        vb = _mm256_min_epi32(vb, c255);
+
+				/*
+         * store result
+         */
+        for (k = 0; k < 4; k++) {
+          dst1[0] = _mm256_extract_epi32(vr, k);
+          dst1[1] = _mm256_extract_epi32(vg, k);
+          dst1[2] = _mm256_extract_epi32(vb, k);
+
+          dst1 += 3;
+        }
+
+        for (k = 4; k < 8; k++) {
+          dst2[0] = _mm256_extract_epi32(vr, k);
+          dst2[1] = _mm256_extract_epi32(vg, k);
+          dst2[2] = _mm256_extract_epi32(vb, k);
+
+          dst2 += 3;
+        }
+
+        /*
+         * update pointer
+         */
+        yp1 += 4;
+        yp2 += 4;
+        up += 2;
+        vp += 2;
+      }
+
+      dst1  += ptr->stride;
+      dst2  += ptr->stride;
+
+      src_y += (ptr->y_stride * 2);
+      src_u += ptr->uv_stride;
+      src_v += ptr->uv_stride;
+    }
+  }
+
+  return ret;
+}
+#else /* defined(ENABLE_AVX) */
 int
 i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
 {
@@ -291,4 +495,4 @@ i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
 
   return ret;
 }
-
+#endif /* defined(ENABLE_AVX) */

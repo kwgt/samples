@@ -27,8 +27,8 @@ main(int argc, char* argv[])
   h264dec_new(&dec);
   i420_new(&csc);
 
-  for (i = 0; i < 300; i++) {
-    sprintf(path, "data.1/%04d.264", i);
+  for (i = 1; i < 300; i++) {
+    sprintf(path, "data/%04d.nal", i);
 
     read_file(path, &data, &size);
     state = 0;
@@ -36,13 +36,11 @@ main(int argc, char* argv[])
     err = h264dec_decode(dec, data, size, &state);
 
     if (!err) {
-      printf("%d %d %d\n", i, state, size);
+      printf("%d %d %zu\n", i, state, size);
 
       if (state == 1) {
         i420_update(csc, dec->width, dec->height,
                     dec->y_stride, dec->uv_stride);
-
-        i420_conv(csc, dec->y, dec->u, dec->v);
 
         sprintf(path, "ppm/%04d.ppm", i);
         write_ppm(path, csc->width, csc->height, csc->plane, "test");

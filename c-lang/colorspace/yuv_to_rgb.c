@@ -8,13 +8,27 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#ifdef ENABLE_NEON
 #if defined(__ARM_NEON) || defined(__ARM_NEON__)
 #include <arm_neon.h>
-#else /* defined(__ARM_NEON) || defined(__ARM_NEON__) */
-#ifdef ENABLE_NEON
+#else
 #error "ARM NEON instruction is not supported."
+#else /* defined(__ARM_NEON) || defined(__ARM_NEON__) */
 #endif /* defined(ENABLE_NEON) */
-#endif /* defined(__ARM_NEON) || defined(__ARM_NEON__) */
+
+#ifdef ENABLE_SSE2
+#if defined(__SSE2__)
+
+#if defined(_MSC_VER)
+#include <intrin.h>
+#elif defined(__GNUC__)
+#include <x86intrin.h>
+#endif /* defined(*) */
+
+#else /* defined(__SSE2__) */
+#error "SSE2 instruction is not supported."
+#endif /* defined(__SSE2__) */
+#endif /* defined(ENABLE_SSE2) */
 
 #define SATURATE8(x)      (uint8_t)(((x) < 0)? 0:(((x) > 255)? 255:(x)))
 
@@ -104,7 +118,7 @@ i420_to_rgb(uint8_t* _y, uint8_t* _u, uint8_t* _v, int wd, int ht, uint8_t* _d)
       tl = vmovq_n_s32(v[0] - 128);
 
       vr = vmlaq_n_s32(vy, tl, 1634); 
-      vg = vmlsq_n_s32(vy, tl, 833);
+      vg = vmlsq_n_s32(vg, tl, 833);
 
       /*
        * スケールの戻しと飽和処理

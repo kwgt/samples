@@ -155,6 +155,8 @@ h264dec_destroy(h264dec_t* ptr)
     free(ptr->buffer);
     free(ptr);
   }
+
+  return ret;
 }
 
 int
