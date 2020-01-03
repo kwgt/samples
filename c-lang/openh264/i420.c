@@ -181,10 +181,6 @@ i420_update(i420_t* ptr, int width, int height, int y_stride, int uv_stride)
 }
 
 #ifdef ENABLE_AVX
-
-#define DEBUG(r) \
-        printf("%016llx %016llx %016llx %016llx\n", r[0], r[1], r[2], r[3])
-
 int
 i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
 {
@@ -257,7 +253,7 @@ i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
     __m256i c2066 = _mm256_set1_epi32(2066);
     __m256i c1634 = _mm256_set1_epi32(1634);
     __m256i c833  = _mm256_set1_epi32(833);
-    __m256i c0    = _mm256_setzero_pd();
+    __m256i c0    = _mm256_setzero_si256();
     __m256i c255  = _mm256_set1_epi32(255);
 #endif /* !defined(_OPENMP) */
 
@@ -271,7 +267,7 @@ i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
       __m256i c2066 = _mm256_set1_epi32(2066);
       __m256i c1634 = _mm256_set1_epi32(1634);
       __m256i c833  = _mm256_set1_epi32(833);
-      __m256i c0    = _mm256_setzero_pd();
+      __m256i c0    = _mm256_setzero_si256();
       __m256i c255  = _mm256_set1_epi32(255);
 #endif /* defined(_OPENMP) */
 
