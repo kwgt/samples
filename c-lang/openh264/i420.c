@@ -248,19 +248,14 @@ i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
     int32x4_t c0   = vmovq_n_s32(0);
     int32x4_t c255 = vmovq_n_s32(255);
 #else /* !defined(_OPENMP) */
+
 #ifdef NUM_THREADS
     omp_set_num_threads(NUM_THREADS);
 #endif /* defined(NUM_THREADS) */
 #endif /* !defined(_OPENMP) */
 
-#pragma omp parallel for private(j)
+#pragma omp parallel for private(j) shared(ptr,src_y,src_u,src_v)
     for (i = 0; i < ptr->height; i += 2) {
-#ifdef _OPENMP
-      int32x4_t c16  = vmovq_n_s32(16);
-      int32x4_t c0   = vmovq_n_s32(0);
-      int32x4_t c255 = vmovq_n_s32(255);
-#endif /* defined(_OPENMP) */
-
       uint8_t* d1;
       uint8_t* d2;
 
@@ -268,6 +263,12 @@ i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
       uint8_t* yp2;
       uint8_t* up;
       uint8_t* vp;
+
+#ifdef _OPENMP
+      int32x4_t c16  = vmovq_n_s32(16);
+      int32x4_t c0   = vmovq_n_s32(0);
+      int32x4_t c255 = vmovq_n_s32(255);
+#endif /* defined(_OPENMP) */
 
       d1  = ptr->plane + (i * ptr->stride);
       d2  = d1 + ptr->stride;
@@ -309,7 +310,7 @@ i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
         /*
          * B
          */
-        vb = vmlaq_n_s32(vy, vu, 400);
+        vb = vmlaq_n_s32(vy, vu, 2066);
         vb = vshrq_n_s32(vb, 10);
         vb = vmaxq_s32(vb, c0);
         vb = vminq_s32(vb, c255);
@@ -325,8 +326,8 @@ i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
         /*
          * G
          */
-        vg = vmlsq_n_s32(vy, vu, 400);
         vg = vmlsq_n_s32(vg, vv, 833);
+        vg = vmlsq_n_s32(vy, vu, 400);
         vg = vshrq_n_s32(vg, 10);
         vg = vmaxq_s32(vg, c0);
         vg = vminq_s32(vg, c255);
