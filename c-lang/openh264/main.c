@@ -42,8 +42,22 @@ main(int argc, char* argv[])
         i420_update(csc, dec->width, dec->height,
                     dec->y_stride, dec->uv_stride);
 
+#ifdef BENCHMARK
+        {
+          int j;
+
+          for (j = 0; j < 10000; j++) {
+            i420_conv(csc, dec->y, dec->u, dec->v);
+          }
+        }
+
+        exit(0);
+
+#else /* defined(BENCHMARK) */
+        i420_conv(csc, dec->y, dec->u, dec->v);
         sprintf(path, "ppm/%04d.ppm", i);
         write_ppm(path, csc->width, csc->height, csc->plane, "test");
+#endif /* defined(BENCHMARK) */
       }
 
     } else {

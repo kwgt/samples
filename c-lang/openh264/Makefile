@@ -8,10 +8,14 @@ CSRC      := main.c \
 	     i420.c \
 	     util.c
 
-# for darwin
+# for MacOS
 CFLAGS    += -DENABLE_AVX -mavx -mavx2 -mfma
-LDFLAGS   += -O3 -g -L./lib/x86_64-darwin18 -lopenh264
-LDFLAGS   += -Wl,-rpath,lib/x86_64-darwin18
+LDFLAGS   += -L./lib/x86_64-darwin18 -lopenh264
+LDFLAGS   += -Wl,-rpath,./lib/x86_64-darwin18
+CFLAGS    += -I${HOME}/env/homebrew/include
+CFLAGS    += -Xpreprocessor -fopenmp -DNUM_THREADS=4
+LDFLAGS   += -L${HOME}/env/homebrew/lib -lomp
+LDFLAGS   += -Wl,-rpath,${HOME}/env/homebrew/lib
 CSRC      += avx.c
 
 OBJS      := $(patsubst %.c,%.o, $(CSRC))
@@ -33,6 +37,12 @@ clean:
 
 clean-data:
 	rm -f data/[0-9]*.264
+
+update:
+	install_name_tool \
+	  -change "/usr/local/lib/libopenh264.5.dylib" \
+	          "@rpath/libopenh264.5.dylib" \
+	  decoder
 
 decode: $(TARGET)
 	env LD_LIBRARY_PATH=./lib/aarch64-linux ./$(TARGET)
