@@ -1,13 +1,16 @@
 CFLAGS    += -O2 -g -I./include -fPIC
-CFLAGS    += -DBENCHMARK
+#CFLAGS    += -DBENCHMARK
+
+# for NEON
+CFLAGS    += -DENABLE_NEON
 
 # for OpenH264
 LDFLAGS   += -L./lib/aarch64-linux -lopenh264
 LDFLAGS   += -Wl,-rpath,./lib/aarch64-linux
 
 # for OpenMP
-CFLAGS    += -fopenmp
-LDFLAGS   += -lgomp
+#CFLAGS    += -fopenmp
+#LDFLAGS   += -lgomp
 
 CSRC      := main.c \
              h264dec.c \
@@ -21,9 +24,8 @@ all: $(TARGET)
 
 main.c: h264dec.h i420.h util.h
 h264dec.c: h264dec.h
-i420.c: i420.h avx.h
+i420.c: i420.h
 util.c: util.h
-avx.c: avx.h
 
 decoder: $(OBJS)
 	$(CC) -o $@ $^ $(LDFLAGS)

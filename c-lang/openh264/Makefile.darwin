@@ -1,16 +1,18 @@
 CFLAGS    += -O2 -g -I./include -fPIC
-CFLAGS    += -DBENCHMARK
+#CFLAGS    += -DBENCHMARK
 
 CSRC      := main.c \
              h264dec.c \
 	     i420.c \
 	     util.c
 
-# for OpenH264
+# for Intel AVX instruction
 CFLAGS    += -DENABLE_AVX -mavx -mavx2 -mfma
+CSRC      += avx.c
+
+# for OpenH264
 LDFLAGS   += -L./lib/x86_64-darwin18 -lopenh264
 LDFLAGS   += -Wl,-rpath,./lib/x86_64-darwin18
-CSRC      += avx.c
 
 # for OpenMP
 CFLAGS    += -I${HOME}/env/homebrew/include

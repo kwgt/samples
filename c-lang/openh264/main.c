@@ -46,7 +46,7 @@ main(int argc, char* argv[])
         {
           int j;
 
-          for (j = 0; j < 10000; j++) {
+          for (j = 0; j < 1000; j++) {
             i420_conv(csc, dec->y, dec->u, dec->v);
           }
         }

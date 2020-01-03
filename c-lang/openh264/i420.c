@@ -3,13 +3,17 @@
 #include <stdint.h>
 #include <string.h>
 
-#ifdef ENABLE_AVX
-#include "avx.h"
-#endif /* defined(ENABLE_AVX) */
-
 #ifdef _OPENMP
 #include <omp.h>
 #endif /* defined(_OPENMP) */
+
+#ifdef ENABLE_NEON
+#include "neon.h"
+#endif /* defined(ENABLE_NEON) */
+
+#ifdef ENABLE_AVX
+#include "avx.h"
+#endif /* defined(ENABLE_AVX) */
 
 #include "i420.h"
 
@@ -180,7 +184,190 @@ i420_update(i420_t* ptr, int width, int height, int y_stride, int uv_stride)
   return ret;
 }
 
-#ifdef ENABLE_AVX
+#if defined(ENABLE_NEON)
+int
+i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
+{
+  int ret;
+  int i;
+  int j;
+
+  /*
+   * initialize
+   */
+  ret = 0;
+
+  /*
+   * argument check
+   */
+  do {
+    if (ptr == NULL) {
+      ret = DEFAULT_ERROR;
+      break;
+    }
+
+    if (src_y == NULL) {
+      ret = DEFAULT_ERROR;
+      break;
+    }
+
+    if (src_u == NULL) {
+      ret = DEFAULT_ERROR;
+      break;
+    }
+
+    if (src_v == NULL) {
+      ret = DEFAULT_ERROR;
+      break;
+    }
+  } while (0);
+
+  /*
+   * do convert
+   *
+   * 2x2ピクセルを1ユニットとして処理。ピクセルに対するレーン配置は以下の通り
+   *
+   * 0 1
+   * 2 3
+   *
+   * YUVからRGBへの変換式は以下の通り
+   *
+   *   R = (1.164f * (y - 16)) + (1.596f * (v - 128))
+   *   G = (1.164f * (y - 16)) - (0.813f * (v - 128)) - (0.391f * (u - 128))
+   *   B = (1.164f * (y - 16)) + (2.018f * (u - 128))
+   *
+   * 上記を、整数演算化による高速化を狙って以下の様に実装する。
+   *
+   *   R = ((1192 * (y - 16)) + (1634 * (v - 128))) >> 10
+   *   G = ((1192 * (y - 16)) - ( 833 * (v - 128)) - (400 * (u - 128))) >> 10
+   *   B = ((1192 * (y - 16)) + (2066 * (u - 128))) >> 10
+   */
+  if (!ret) {
+#ifndef _OPENMP
+    int32x4_t c16  = vmovq_n_s32(16);
+    int32x4_t c0   = vmovq_n_s32(0);
+    int32x4_t c255 = vmovq_n_s32(255);
+#else /* !defined(_OPENMP) */
+#ifdef NUM_THREADS
+    omp_set_num_threads(NUM_THREADS);
+#endif /* defined(NUM_THREADS) */
+#endif /* !defined(_OPENMP) */
+
+#pragma omp parallel for private(j)
+    for (i = 0; i < ptr->height; i += 2) {
+#ifdef _OPENMP
+      int32x4_t c16  = vmovq_n_s32(16);
+      int32x4_t c0   = vmovq_n_s32(0);
+      int32x4_t c255 = vmovq_n_s32(255);
+#endif /* defined(_OPENMP) */
+
+      uint8_t* d1;
+      uint8_t* d2;
+
+      uint8_t* yp1;
+      uint8_t* yp2;
+      uint8_t* up;
+      uint8_t* vp;
+
+      d1  = ptr->plane + (i * ptr->stride);
+      d2  = d1 + ptr->stride;
+
+      yp1 = src_y + (i * ptr->y_stride);
+      yp2 = yp1 + ptr->y_stride;
+      up  = src_u + ((i / 2) * ptr->uv_stride);
+      vp  = src_v + ((i / 2) * ptr->uv_stride);
+
+      for (j = 0; j < ptr->width; j += 2) {
+        int32x4_t vy;
+        int32x4_t vu;
+        int32x4_t vv;
+        int32x4_t vr;
+        int32x4_t vg;
+        int32x4_t vb;
+
+        /*
+         * Y
+         */
+        vy = vsetq_lane_s32(yp1[0], vy, 0);
+        vy = vsetq_lane_s32(yp1[1], vy, 1);
+        vy = vsetq_lane_s32(yp2[0], vy, 2);
+        vy = vsetq_lane_s32(yp2[1], vy, 3);
+
+        vy = vsubq_s32(vy, c16);
+        vy = vmulq_n_s32(vy, 1192);
+
+        /*
+         * U
+         */
+        vu = vmovq_n_s32(up[0] - 128);
+
+        /*
+         * V
+         */
+        vv = vmovq_n_s32(vp[0] - 128);
+
+        /*
+         * B
+         */
+        vb = vmlaq_n_s32(vy, vu, 400);
+        vb = vshrq_n_s32(vb, 10);
+        vb = vmaxq_s32(vb, c0);
+        vb = vminq_s32(vb, c255);
+
+        /*
+         * R
+         */
+        vr = vmlaq_n_s32(vy, vv, 1634);
+        vr = vshrq_n_s32(vr, 10);
+        vr = vmaxq_s32(vr, c0);
+        vr = vminq_s32(vr, c255); 
+
+        /*
+         * G
+         */
+        vg = vmlsq_n_s32(vy, vu, 400);
+        vg = vmlsq_n_s32(vg, vv, 833);
+        vg = vshrq_n_s32(vg, 10);
+        vg = vmaxq_s32(vg, c0);
+        vg = vminq_s32(vg, c255);
+
+        /*
+         *  store result
+         */
+        d1[0] = vgetq_lane_s32(vr, 0);
+        d1[1] = vgetq_lane_s32(vg, 0);
+        d1[2] = vgetq_lane_s32(vb, 0);
+
+        d1[3] = vgetq_lane_s32(vr, 1);
+        d1[4] = vgetq_lane_s32(vg, 1);
+        d1[5] = vgetq_lane_s32(vb, 1);
+
+        d2[0] = vgetq_lane_s32(vr, 2);
+        d2[1] = vgetq_lane_s32(vg, 2);
+        d2[2] = vgetq_lane_s32(vb, 2);
+
+        d2[3] = vgetq_lane_s32(vr, 3);
+        d2[4] = vgetq_lane_s32(vg, 3);
+        d2[5] = vgetq_lane_s32(vb, 3);
+
+        /*
+         * update pointer
+         */
+        yp1 += 2;
+        yp2 += 2;
+        up  += 1;
+        vp  += 1;
+
+        d1  += 6;
+        d2  += 6;
+      }
+    }
+  }
+
+  return ret;
+}
+
+#elif defined(ENABLE_AVX)
 int
 i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
 {
@@ -227,7 +414,6 @@ i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
    * 0 1 2 3
    * 4 5 6 7
    *
-   *
    * YUVからRGBへの変換式は以下の通り
    *
    *   R = (1.164f * (y - 16)) + (1.596f * (v - 128))
@@ -241,11 +427,7 @@ i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
    *   B = ((1192 * (y - 16)) + (2066 * (u - 128))) >> 10
    */
   if (!ret) {
-#ifdef _OPENMP
-#ifdef NUM_THREADS
-    omp_set_num_threads(NUM_THREADS);
-#endif /* defined(NUM_THREADS) */
-#else /* !defined(_OPENMP) */
+#ifndef _OPENMP
     __m256i c16   = _mm256_set1_epi32(16);
     __m256i c128  = _mm256_set1_epi32(128);
     __m256i c1192 = _mm256_set1_epi32(1192);
@@ -255,6 +437,10 @@ i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
     __m256i c833  = _mm256_set1_epi32(833);
     __m256i c0    = _mm256_setzero_si256();
     __m256i c255  = _mm256_set1_epi32(255);
+#else /* !defined(_OPENMP) */
+#ifdef NUM_THREADS
+    omp_set_num_threads(NUM_THREADS);
+#endif /* defined(NUM_THREADS) */
 #endif /* !defined(_OPENMP) */
 
 #pragma omp parallel for private(j,k)
@@ -381,7 +567,7 @@ i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
 
   return ret;
 }
-#else /* defined(ENABLE_AVX) */
+#else /* * */
 int
 i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
 {
@@ -423,7 +609,9 @@ i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
    * do convert
    */
   if (!ret) {
-
+#ifdef NUM_THREADS
+    omp_set_num_threads(NUM_THREADS);
+#endif /* defined(NUM_THREADS) */
 #pragma omp parallel for private(j)
     for (i = 0; i < ptr->height; i += 2) {
       uint8_t* d1;      // destination pointer for even line
@@ -494,4 +682,4 @@ i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
 
   return ret;
 }
-#endif /* defined(ENABLE_AVX) */
+#endif /* * */
