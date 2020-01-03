@@ -306,29 +306,29 @@ i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
                               yp1[3], yp1[2], yp1[1], yp1[0]);
 
         vy = _mm256_sub_epi32(vy, c16);
-				vy = _mm256_mullo_epi32(vy, c1192);
+        vy = _mm256_mullo_epi32(vy, c1192);
 
         /*
          * U
          */
         vu = _mm256_set_epi32(up[1], up[1], up[0], up[0],
-															up[1], up[1], up[0], up[0]);
+                              up[1], up[1], up[0], up[0]);
 
-				vu = _mm256_sub_epi32(vu, c128);
+        vu = _mm256_sub_epi32(vu, c128);
 
         /*
          * V
          */
         vv = _mm256_set_epi32(vp[1], vp[1], vp[0], vp[0],
-															vp[1], vp[1], vp[0], vp[0]);
+                              vp[1], vp[1], vp[0], vp[0]);
 
-				vv = _mm256_sub_epi32(vv, c128);
+        vv = _mm256_sub_epi32(vv, c128);
 
         /*
          * B
          */
-				vb = _mm256_mullo_epi32(vu, c2066);
-				vb = _mm256_add_epi32(vy, vb);
+        vb = _mm256_mullo_epi32(vu, c2066);
+        vb = _mm256_add_epi32(vy, vb);
         vb = _mm256_srai_epi32(vb, 10);
         vb = _mm256_max_epi32(vb, c0);
         vb = _mm256_min_epi32(vb, c255);
@@ -336,8 +336,8 @@ i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
         /*
          * R
          */
-				vr = _mm256_mullo_epi32(vv, c1634);
-				vr = _mm256_add_epi32(vy, vr);
+        vr = _mm256_mullo_epi32(vv, c1634);
+        vr = _mm256_add_epi32(vy, vr);
         vr = _mm256_srai_epi32(vr, 10);
         vr = _mm256_max_epi32(vr, c0);
         vr = _mm256_min_epi32(vr, c255);
@@ -345,15 +345,15 @@ i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
         /*
          * G
          */
-				vu = _mm256_mullo_epi32(vu, c400);
-				vv = _mm256_mullo_epi32(vv, c833);
-				vg = _mm256_sub_epi32(vy, vv);
-				vg = _mm256_sub_epi32(vg, vu);
+        vu = _mm256_mullo_epi32(vu, c400);
+        vv = _mm256_mullo_epi32(vv, c833);
+        vg = _mm256_sub_epi32(vy, vv);
+        vg = _mm256_sub_epi32(vg, vu);
         vg = _mm256_srai_epi32(vg, 10);
         vg = _mm256_max_epi32(vg, c0);
         vg = _mm256_min_epi32(vg, c255);
 
-				/*
+        /*
          * store result
          */
         for (k = 0; k < 4; k++) {
