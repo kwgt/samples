@@ -243,19 +243,16 @@ i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
    *   B = ((1192 * (y - 16)) + (2066 * (u - 128))) >> 10
    */
   if (!ret) {
-#ifndef _OPENMP
-    int32x4_t c16  = vmovq_n_s32(16);
-    int32x4_t c0   = vmovq_n_s32(0);
-    int32x4_t c255 = vmovq_n_s32(255);
-#else /* !defined(_OPENMP) */
-
-#ifdef NUM_THREADS
+#if defined(_OPENMP) && defined(NUM_THREADS)
     omp_set_num_threads(NUM_THREADS);
-#endif /* defined(NUM_THREADS) */
-#endif /* !defined(_OPENMP) */
+#endif /* defined(_OPENMP) && defined(NUM_THREADS) */
 
-#pragma omp parallel for private(j) shared(ptr,src_y,src_u,src_v)
-    for (i = 0; i < ptr->height; i += 2) {
+#pragma omp parallel private(j) shared(ptr,src_y,src_u,src_v)
+    {
+      int32x4_t c16  = vmovq_n_s32(16);
+      int32x4_t c0   = vmovq_n_s32(0);
+      int32x4_t c255 = vmovq_n_s32(255);
+
       uint8_t* d1;
       uint8_t* d2;
 
@@ -264,103 +261,100 @@ i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
       uint8_t* up;
       uint8_t* vp;
 
-#ifdef _OPENMP
-      int32x4_t c16  = vmovq_n_s32(16);
-      int32x4_t c0   = vmovq_n_s32(0);
-      int32x4_t c255 = vmovq_n_s32(255);
-#endif /* defined(_OPENMP) */
+      int32x4_t vy;
+      int32x4_t vu;
+      int32x4_t vv;
+      int32x4_t vr;
+      int32x4_t vg;
+      int32x4_t vb;
 
-      d1  = ptr->plane + (i * ptr->stride);
-      d2  = d1 + ptr->stride;
+#pragma omp for
+      for (i = 0; i < ptr->height; i += 2) {
+        d1  = ptr->plane + (i * ptr->stride);
+        d2  = d1 + ptr->stride;
 
-      yp1 = src_y + (i * ptr->y_stride);
-      yp2 = yp1 + ptr->y_stride;
-      up  = src_u + ((i / 2) * ptr->uv_stride);
-      vp  = src_v + ((i / 2) * ptr->uv_stride);
+        yp1 = src_y + (i * ptr->y_stride);
+        yp2 = yp1 + ptr->y_stride;
+        up  = src_u + ((i / 2) * ptr->uv_stride);
+        vp  = src_v + ((i / 2) * ptr->uv_stride);
 
-      for (j = 0; j < ptr->width; j += 2) {
-        int32x4_t vy;
-        int32x4_t vu;
-        int32x4_t vv;
-        int32x4_t vr;
-        int32x4_t vg;
-        int32x4_t vb;
+        for (j = 0; j < ptr->width; j += 2) {
+          /*
+           * Y
+           */
+          vy = vsetq_lane_s32(yp1[0], vy, 0);
+          vy = vsetq_lane_s32(yp1[1], vy, 1);
+          vy = vsetq_lane_s32(yp2[0], vy, 2);
+          vy = vsetq_lane_s32(yp2[1], vy, 3);
 
-        /*
-         * Y
-         */
-        vy = vsetq_lane_s32(yp1[0], vy, 0);
-        vy = vsetq_lane_s32(yp1[1], vy, 1);
-        vy = vsetq_lane_s32(yp2[0], vy, 2);
-        vy = vsetq_lane_s32(yp2[1], vy, 3);
+          vy = vsubq_s32(vy, c16);
+          vy = vmulq_n_s32(vy, 1192);
 
-        vy = vsubq_s32(vy, c16);
-        vy = vmulq_n_s32(vy, 1192);
+          /*
+           * U
+           */
+          vu = vmovq_n_s32(up[0] - 128);
 
-        /*
-         * U
-         */
-        vu = vmovq_n_s32(up[0] - 128);
+          /*
+           * V
+           */
+          vv = vmovq_n_s32(vp[0] - 128);
 
-        /*
-         * V
-         */
-        vv = vmovq_n_s32(vp[0] - 128);
+          /*
+           * B
+           */
+          vb = vmlaq_n_s32(vy, vu, 2066);
+          vb = vshrq_n_s32(vb, 10);
+          vb = vmaxq_s32(vb, c0);
+          vb = vminq_s32(vb, c255);
 
-        /*
-         * B
-         */
-        vb = vmlaq_n_s32(vy, vu, 2066);
-        vb = vshrq_n_s32(vb, 10);
-        vb = vmaxq_s32(vb, c0);
-        vb = vminq_s32(vb, c255);
+          /*
+           * R
+           */
+          vr = vmlaq_n_s32(vy, vv, 1634);
+          vr = vshrq_n_s32(vr, 10);
+          vr = vmaxq_s32(vr, c0);
+          vr = vminq_s32(vr, c255); 
 
-        /*
-         * R
-         */
-        vr = vmlaq_n_s32(vy, vv, 1634);
-        vr = vshrq_n_s32(vr, 10);
-        vr = vmaxq_s32(vr, c0);
-        vr = vminq_s32(vr, c255); 
+          /*
+           * G
+           */
+          vg = vmlsq_n_s32(vg, vv, 833);
+          vg = vmlsq_n_s32(vy, vu, 400);
+          vg = vshrq_n_s32(vg, 10);
+          vg = vmaxq_s32(vg, c0);
+          vg = vminq_s32(vg, c255);
 
-        /*
-         * G
-         */
-        vg = vmlsq_n_s32(vg, vv, 833);
-        vg = vmlsq_n_s32(vy, vu, 400);
-        vg = vshrq_n_s32(vg, 10);
-        vg = vmaxq_s32(vg, c0);
-        vg = vminq_s32(vg, c255);
+          /*
+           *  store result
+           */
+          d1[0] = vgetq_lane_s32(vr, 0);
+          d1[1] = vgetq_lane_s32(vg, 0);
+          d1[2] = vgetq_lane_s32(vb, 0);
 
-        /*
-         *  store result
-         */
-        d1[0] = vgetq_lane_s32(vr, 0);
-        d1[1] = vgetq_lane_s32(vg, 0);
-        d1[2] = vgetq_lane_s32(vb, 0);
+          d1[3] = vgetq_lane_s32(vr, 1);
+          d1[4] = vgetq_lane_s32(vg, 1);
+          d1[5] = vgetq_lane_s32(vb, 1);
 
-        d1[3] = vgetq_lane_s32(vr, 1);
-        d1[4] = vgetq_lane_s32(vg, 1);
-        d1[5] = vgetq_lane_s32(vb, 1);
+          d2[0] = vgetq_lane_s32(vr, 2);
+          d2[1] = vgetq_lane_s32(vg, 2);
+          d2[2] = vgetq_lane_s32(vb, 2);
 
-        d2[0] = vgetq_lane_s32(vr, 2);
-        d2[1] = vgetq_lane_s32(vg, 2);
-        d2[2] = vgetq_lane_s32(vb, 2);
+          d2[3] = vgetq_lane_s32(vr, 3);
+          d2[4] = vgetq_lane_s32(vg, 3);
+          d2[5] = vgetq_lane_s32(vb, 3);
 
-        d2[3] = vgetq_lane_s32(vr, 3);
-        d2[4] = vgetq_lane_s32(vg, 3);
-        d2[5] = vgetq_lane_s32(vb, 3);
+          /*
+           * update pointer
+           */
+          yp1 += 2;
+          yp2 += 2;
+          up  += 1;
+          vp  += 1;
 
-        /*
-         * update pointer
-         */
-        yp1 += 2;
-        yp2 += 2;
-        up  += 1;
-        vp  += 1;
-
-        d1  += 6;
-        d2  += 6;
+          d1  += 6;
+          d2  += 6;
+        }
       }
     }
   }
@@ -428,25 +422,12 @@ i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
    *   B = ((1192 * (y - 16)) + (2066 * (u - 128))) >> 10
    */
   if (!ret) {
-#ifndef _OPENMP
-    __m256i c16   = _mm256_set1_epi32(16);
-    __m256i c128  = _mm256_set1_epi32(128);
-    __m256i c1192 = _mm256_set1_epi32(1192);
-    __m256i c400  = _mm256_set1_epi32(400);
-    __m256i c2066 = _mm256_set1_epi32(2066);
-    __m256i c1634 = _mm256_set1_epi32(1634);
-    __m256i c833  = _mm256_set1_epi32(833);
-    __m256i c0    = _mm256_setzero_si256();
-    __m256i c255  = _mm256_set1_epi32(255);
-#else /* !defined(_OPENMP) */
-#ifdef NUM_THREADS
+#if defined(_OPENMP) && defined(NUM_THREADS)
     omp_set_num_threads(NUM_THREADS);
-#endif /* defined(NUM_THREADS) */
-#endif /* !defined(_OPENMP) */
+#endif /* defined(_OPENMP) && defined(NUM_THREADS) */
 
-#pragma omp parallel for private(j,k)
-    for (i = 0; i < ptr->height; i += 2) {
-#ifdef _OPENMP
+#pragma omp parallel private(j,k) shared(ptr,src_y,src_u,src_v)
+    {
       __m256i c16   = _mm256_set1_epi32(16);
       __m256i c128  = _mm256_set1_epi32(128);
       __m256i c1192 = _mm256_set1_epi32(1192);
@@ -456,7 +437,6 @@ i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
       __m256i c833  = _mm256_set1_epi32(833);
       __m256i c0    = _mm256_setzero_si256();
       __m256i c255  = _mm256_set1_epi32(255);
-#endif /* defined(_OPENMP) */
 
       uint8_t* d1;      // destination pointer for even line
       uint8_t* d2;      // destination pointer for odd line
@@ -466,102 +446,105 @@ i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
       uint8_t* up;      // u-plane pointer
       uint8_t* vp;      // v-plane pointer
 
-      d1  = ptr->plane + (i * ptr->stride);
-      d2  = d1 + ptr->stride;
+      __m256i vy;
+      __m256i vu;
+      __m256i vv;
+      __m256i vr;
+      __m256i vg;
+      __m256i vb;
 
-      yp1 = src_y + (i * ptr->y_stride);
-      yp2 = yp1 + ptr->y_stride;
-      up  = src_u + ((i / 2) * ptr->uv_stride);
-      vp  = src_v + ((i / 2) * ptr->uv_stride);
+#pragma omp for 
+      for (i = 0; i < ptr->height; i += 2) {
+        d1  = ptr->plane + (i * ptr->stride);
+        d2  = d1 + ptr->stride;
 
-      for (j = 0; j < ptr->width; j += 4) {
-        __m256i vy;
-        __m256i vu;
-        __m256i vv;
-        __m256i vr;
-        __m256i vg;
-        __m256i vb;
+        yp1 = src_y + (i * ptr->y_stride);
+        yp2 = yp1 + ptr->y_stride;
+        up  = src_u + ((i / 2) * ptr->uv_stride);
+        vp  = src_v + ((i / 2) * ptr->uv_stride);
 
-        /*
-         * Y
-         */
-        vy = _mm256_set_epi32(yp2[3], yp2[2], yp2[1], yp2[0],
-                              yp1[3], yp1[2], yp1[1], yp1[0]);
+        for (j = 0; j < ptr->width; j += 4) {
+          /*
+           * Y
+           */
+          vy = _mm256_set_epi32(yp2[3], yp2[2], yp2[1], yp2[0],
+                                yp1[3], yp1[2], yp1[1], yp1[0]);
 
-        vy = _mm256_sub_epi32(vy, c16);
-        vy = _mm256_mullo_epi32(vy, c1192);
+          vy = _mm256_sub_epi32(vy, c16);
+          vy = _mm256_mullo_epi32(vy, c1192);
 
-        /*
-         * U
-         */
-        vu = _mm256_set_epi32(up[1], up[1], up[0], up[0],
-                              up[1], up[1], up[0], up[0]);
+          /*
+           * U
+           */
+          vu = _mm256_set_epi32(up[1], up[1], up[0], up[0],
+                                up[1], up[1], up[0], up[0]);
 
-        vu = _mm256_sub_epi32(vu, c128);
+          vu = _mm256_sub_epi32(vu, c128);
 
-        /*
-         * V
-         */
-        vv = _mm256_set_epi32(vp[1], vp[1], vp[0], vp[0],
-                              vp[1], vp[1], vp[0], vp[0]);
+          /*
+           * V
+           */
+          vv = _mm256_set_epi32(vp[1], vp[1], vp[0], vp[0],
+                                vp[1], vp[1], vp[0], vp[0]);
 
-        vv = _mm256_sub_epi32(vv, c128);
+          vv = _mm256_sub_epi32(vv, c128);
 
-        /*
-         * B
-         */
-        vb = _mm256_mullo_epi32(vu, c2066);
-        vb = _mm256_add_epi32(vy, vb);
-        vb = _mm256_srai_epi32(vb, 10);
-        vb = _mm256_max_epi32(vb, c0);
-        vb = _mm256_min_epi32(vb, c255);
+          /*
+           * B
+           */
+          vb = _mm256_mullo_epi32(vu, c2066);
+          vb = _mm256_add_epi32(vy, vb);
+          vb = _mm256_srai_epi32(vb, 10);
+          vb = _mm256_max_epi32(vb, c0);
+          vb = _mm256_min_epi32(vb, c255);
 
-        /*
-         * R
-         */
-        vr = _mm256_mullo_epi32(vv, c1634);
-        vr = _mm256_add_epi32(vy, vr);
-        vr = _mm256_srai_epi32(vr, 10);
-        vr = _mm256_max_epi32(vr, c0);
-        vr = _mm256_min_epi32(vr, c255);
+          /*
+           * R
+           */
+          vr = _mm256_mullo_epi32(vv, c1634);
+          vr = _mm256_add_epi32(vy, vr);
+          vr = _mm256_srai_epi32(vr, 10);
+          vr = _mm256_max_epi32(vr, c0);
+          vr = _mm256_min_epi32(vr, c255);
 
-        /*
-         * G
-         */
-        vu = _mm256_mullo_epi32(vu, c400);
-        vv = _mm256_mullo_epi32(vv, c833);
-        vg = _mm256_sub_epi32(vy, vv);
-        vg = _mm256_sub_epi32(vg, vu);
-        vg = _mm256_srai_epi32(vg, 10);
-        vg = _mm256_max_epi32(vg, c0);
-        vg = _mm256_min_epi32(vg, c255);
+          /*
+           * G
+           */
+          vu = _mm256_mullo_epi32(vu, c400);
+          vv = _mm256_mullo_epi32(vv, c833);
+          vg = _mm256_sub_epi32(vy, vv);
+          vg = _mm256_sub_epi32(vg, vu);
+          vg = _mm256_srai_epi32(vg, 10);
+          vg = _mm256_max_epi32(vg, c0);
+          vg = _mm256_min_epi32(vg, c255);
 
-        /*
-         * store result
-         */
-        for (k = 0; k < 4; k++) {
-          d1[0] = _mm256_extract_epi32(vr, k);
-          d1[1] = _mm256_extract_epi32(vg, k);
-          d1[2] = _mm256_extract_epi32(vb, k);
+          /*
+           * store result
+           */
+          for (k = 0; k < 4; k++) {
+            d1[0] = _mm256_extract_epi32(vr, k);
+            d1[1] = _mm256_extract_epi32(vg, k);
+            d1[2] = _mm256_extract_epi32(vb, k);
 
-          d1 += 3;
+            d1 += 3;
+          }
+
+          for (k = 4; k < 8; k++) {
+            d2[0] = _mm256_extract_epi32(vr, k);
+            d2[1] = _mm256_extract_epi32(vg, k);
+            d2[2] = _mm256_extract_epi32(vb, k);
+
+            d2 += 3;
+          }
+
+          /*
+           * update pointer
+           */
+          yp1 += 4;
+          yp2 += 4;
+          up  += 2;
+          vp  += 2;
         }
-
-        for (k = 4; k < 8; k++) {
-          d2[0] = _mm256_extract_epi32(vr, k);
-          d2[1] = _mm256_extract_epi32(vg, k);
-          d2[2] = _mm256_extract_epi32(vb, k);
-
-          d2 += 3;
-        }
-
-        /*
-         * update pointer
-         */
-        yp1 += 4;
-        yp2 += 4;
-        up  += 2;
-        vp  += 2;
       }
     }
   }
