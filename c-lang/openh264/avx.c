@@ -1,4 +1,10 @@
-﻿#include "avx.h"
+﻿/*
+ * Utility for Intel AVX intsruction
+ *
+ *  Copyright (C) 2019 Hiroshi Kuwagata <kgt9221@gmail.com>
+ */
+
+#include "avx.h"
 
 #ifdef __APPLE_CC__
 void*

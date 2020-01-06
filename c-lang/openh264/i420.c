@@ -1,4 +1,10 @@
-﻿#include <stdio.h>
+﻿/*
+ * Colorspace converter (i420 -> RGB)
+ *
+ *  Copyright (C) 2019 Hiroshi Kuwagata <kgt9221@gmail.com>
+ */
+
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -270,7 +276,7 @@ i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
 
 #pragma omp for
       for (i = 0; i < ptr->height; i += 2) {
-        d1  = ptr->plane + (i * ptr->stride);
+        d1  = (uint8_t*)ptr->plane + (i * ptr->stride);
         d2  = d1 + ptr->stride;
 
         yp1 = src_y + (i * ptr->y_stride);
@@ -435,8 +441,6 @@ i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
       __m256i c2066 = _mm256_set1_epi32(2066);
       __m256i c1634 = _mm256_set1_epi32(1634);
       __m256i c833  = _mm256_set1_epi32(833);
-      __m256i c0    = _mm256_setzero_si256();
-      __m256i c255  = _mm256_set1_epi32(255);
 
       uint8_t* d1;      // destination pointer for even line
       uint8_t* d2;      // destination pointer for odd line
@@ -455,7 +459,7 @@ i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
 
 #pragma omp for 
       for (i = 0; i < ptr->height; i += 2) {
-        d1  = ptr->plane + (i * ptr->stride);
+        d1  = (uint8_t*)ptr->plane + (i * ptr->stride);
         d2  = d1 + ptr->stride;
 
         yp1 = src_y + (i * ptr->y_stride);
@@ -464,6 +468,10 @@ i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
         vp  = src_v + ((i / 2) * ptr->uv_stride);
 
         for (j = 0; j < ptr->width; j += 4) {
+          /*
+           * 飽和演算はストア時のパック処理で併せて行っているので注意。
+           */
+
           /*
            * Y
            */
@@ -495,8 +503,6 @@ i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
           vb = _mm256_mullo_epi32(vu, c2066);
           vb = _mm256_add_epi32(vy, vb);
           vb = _mm256_srai_epi32(vb, 10);
-          vb = _mm256_max_epi32(vb, c0);
-          vb = _mm256_min_epi32(vb, c255);
 
           /*
            * R
@@ -504,8 +510,6 @@ i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
           vr = _mm256_mullo_epi32(vv, c1634);
           vr = _mm256_add_epi32(vy, vr);
           vr = _mm256_srai_epi32(vr, 10);
-          vr = _mm256_max_epi32(vr, c0);
-          vr = _mm256_min_epi32(vr, c255);
 
           /*
            * G
@@ -515,26 +519,139 @@ i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
           vg = _mm256_sub_epi32(vy, vv);
           vg = _mm256_sub_epi32(vg, vu);
           vg = _mm256_srai_epi32(vg, 10);
-          vg = _mm256_max_epi32(vg, c0);
-          vg = _mm256_min_epi32(vg, c255);
 
           /*
            * store result
            */
-          for (k = 0; k < 4; k++) {
-            d1[0] = _mm256_extract_epi32(vr, k);
-            d1[1] = _mm256_extract_epi32(vg, k);
-            d1[2] = _mm256_extract_epi32(vb, k);
 
-            d1 += 3;
-          }
+          {
+            alignas(32) union {
+              __m256i ymm;
+              uint8_t u8[32];
+            } buf;
 
-          for (k = 4; k < 8; k++) {
-            d2[0] = _mm256_extract_epi32(vr, k);
-            d2[1] = _mm256_extract_epi32(vg, k);
-            d2[2] = _mm256_extract_epi32(vb, k);
+            /*
+             * vr:
+             *    0           16
+             *   +--+--+--+--+--+--+--+--+
+             *   |R7|R6|R5|R4|R3|R2|R1|R0|
+             *   +--+--+--+--+--+--+--+--+
+             *   ※1単位 1byte(8bit)
+             *
+             * vg:
+             *    0           16
+             *   +--+--+--+--+--+--+--+--+
+             *   |G7|G6|G5|G4|G3|G2|G1|G0|
+             *   +--+--+--+--+--+--+--+--+
+             *   ※1単位 1byte(8bit)
+             *
+             *    |
+             *    V
+             *
+             * vr:
+             *    0           8           16          24
+             *   +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+             *   |G7|G6|G5|G4|R7|R6|R5|R4|G3|G2|G1|G0|R3|R2|R1|R0|
+             *   +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+             *   ※1単位 1byte(8bit)
+             */
+            vr = _mm256_packs_epi32(vr, vg);
 
-            d2 += 3;
+            /*
+             * vb:
+             *    0           16
+             *   +--+--+--+--+--+--+--+--+
+             *   |B7|B6|B5|B4|B3|B2|B1|B0|
+             *   +--+--+--+--+--+--+--+--+
+             *   ※1単位 1byte(8bit)
+             *
+             * vb:
+             *    0           16
+             *   +--+--+--+--+--+--+--+--+
+             *   |B7|B6|B5|B4|B3|B2|B1|B0|
+             *   +--+--+--+--+--+--+--+--+
+             *   ※1単位 1byte(8bit)
+             *
+             *    |
+             *    V
+             *
+             * vb:
+             *    0           8           16          24
+             *   +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+             *   |B7|B6|B5|B4|B7|B6|B5|B4|B3|B2|B1|B0|B3|B2|B1|B0|
+             *   +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+             *   ※1単位 1byte(8bit)
+             */
+            vb = _mm256_packs_epi32(vb, vb);
+
+            /*
+             * vr:
+             *    0           8           16          24
+             *   +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+             *   |G7|G6|G5|G4|R7|R6|R5|R4|G3|G2|G1|G0|R3|R2|R1|R0|
+             *   +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+             *   ※1単位 1byte(8bit)
+             *
+             * vb:
+             *    0           8           16          24
+             *   +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+             *   |B7|B6|B5|B4|B7|B6|B5|B4|B3|B2|B1|B0|B3|B2|B1|B0|
+             *   +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+             *   ※1単位 1byte(8bit)
+             * 
+             *   |
+             *   V
+             *
+             * vr:
+             *    0           4           8           12
+             *   +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+             *   |B7|B6|B5|B4|B7|B6|B5|B4|G7|G6|G5|G4|R7|R6|R5|R4|
+             *   +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+             *   |B3|B2|B1|B0|B3|B2|B1|B0|G3|G2|G1|G0|R3|R2|R1|R0|
+             *   +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+             *   ※1単位 1byte(8bit)
+             */
+            vr = _mm256_packus_epi16(vr, vb);
+
+            /*
+             * store
+             *
+             * ymm:
+             *    0           4           8           12
+             *   +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+             *   |B7|B6|B5|B4|B7|B6|B5|B4|G7|G6|G5|G4|R7|R6|R5|R4|
+             *   +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+             *   |B3|B2|B1|B0|B3|B2|B1|B0|G3|G2|G1|G0|R3|R2|R1|R0|
+             *   +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+             *   ※1単位 1byte(8bit)
+             *
+             *   | (64bit単位のリトルエンディアンなので、
+             *   |  メモリイメージは64bit単位で反転)
+             *   V
+             *
+             * mem:
+             *    0           4           8           12
+             *   +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+             *   |R4|R5|R6|R7|G4|G5|G6|G7|B4|B5|B6|B7|B4|B5|B6|B7|
+             *   +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+             *   |R0|R1|R2|R3|G0|G1|G2|G3|B0|B1|B2|B3|B0|B1|B2|B3|
+             *   +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+             *   ※1単位 1byte(8bit)
+             */
+            _mm256_store_si256(&buf.ymm, vr);
+
+            for (k = 0; k < 4; k++) {
+              d1[0] = buf.u8[k + 0];
+              d1[1] = buf.u8[k + 4];
+              d1[2] = buf.u8[k + 8];
+
+              d2[0] = buf.u8[k + 16];
+              d2[1] = buf.u8[k + 20];
+              d2[2] = buf.u8[k + 24];
+
+              d1 += 3;
+              d2 += 3;
+            }
           }
 
           /*
@@ -605,7 +722,7 @@ i420_conv(i420_t* ptr, uint8_t* src_y, uint8_t* src_u, uint8_t* src_v)
       uint8_t* up;      // u-plane pointer
       uint8_t* vp;      // v-plane pointer
 
-      d1  = ptr->plane + (i * ptr->stride);
+      d1  = (uint8_t*)ptr->plane + (i * ptr->stride);
       d2  = d1 + ptr->stride;
       yp1 = src_y + (i * ptr->y_stride);
       yp2 = yp1 + ptr->y_stride;

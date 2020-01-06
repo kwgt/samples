@@ -1,0 +1,41 @@
+CFLAGS    += -O3 -g -I./include -fPIC
+LDFLAGS   += -g
+CFLAGS    += -DBENCHMARK
+
+# for AVX
+CFLAGS    += -DENABLE_AVX -mavx -mavx2
+
+# for OpenH264
+LDFLAGS   += -L./lib/x86_64-linux -lopenh264
+LDFLAGS   += -Wl,-rpath,./lib/x86_64-linux
+
+# for OpenMP
+CFLAGS    += -fopenmp -pthread
+LDFLAGS   += -lgomp -lpthread
+
+CSRC      := main.c \
+             h264dec.c \
+	     i420.c \
+	     util.c
+
+OBJS      := $(patsubst %.c,%.o, $(CSRC))
+TARGET    := decoder
+
+all: $(TARGET)
+
+main.c: h264dec.h i420.h util.h
+h264dec.c: h264dec.h
+i420.c: i420.h
+util.c: util.h
+
+decoder: $(OBJS)
+	$(CC) -o $@ $^ $(LDFLAGS)
+
+clean:
+	rm -f $(TARGET) $(OBJS) ppm/*
+
+clean-data:
+	rm -f data/[0-9]*.264
+
+decode: $(TARGET)
+	env LD_LIBRARY_PATH=./lib/aarch64-linux ./$(TARGET)

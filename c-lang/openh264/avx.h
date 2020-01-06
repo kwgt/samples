@@ -1,4 +1,10 @@
-﻿#ifndef __COMPAT_H__
+﻿/*
+ * Utilities for Intel AVX instructtion
+ *
+ *  Copyright (C) 2019 Hiroshi Kuwagata <kgt9221@gmail.com>
+ */
+
+#ifndef __COMPAT_H__
 #define __COMPAT_H__
 
 #ifdef __cplusplus
@@ -15,6 +21,10 @@ extern "C" {
 #endif /* defined(__GNUC__) */
 #endif /* !defined(__cplusplus) */
 
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif /* defined(_MSC_VER) */
+
 #if defined(__MINGW32__) || defined(__MINGW64__)
 #include <malloc.h>
 #include <windows.h>
@@ -22,6 +32,10 @@ extern "C" {
 #define aligned_malloc          __mingw_aligned_malloc
 #define aligned_free            __mingw_aligned_free
 #endif /* defined(__MINGW) */
+
+#ifdef __linux__
+#include <x86intrin.h>
+#endif /* defined(__linux__) */
 
 #ifdef __APPLE_CC__
 #include <x86intrin.h>

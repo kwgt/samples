@@ -1,4 +1,10 @@
-﻿#ifndef __I420_H__
+﻿/*
+ * Colorspace converter (i420 -> RGB)
+ *
+ *  Copyright (C) 2019 Hiroshi Kuwagata <kgt9221@gmail.com>
+ */
+
+#ifndef __I420_H__
 #define __I420_H__
 
 #include <stdio.h>
