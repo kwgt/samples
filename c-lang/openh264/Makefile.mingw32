@@ -1,17 +1,17 @@
 CFLAGS    += -O3 -g -I./include -fPIC
 LDFLAGS   += -g
-CFLAGS    += -DBENCHMARK
+#CFLAGS    += -DBENCHMARK
 
-# for NEON
-CFLAGS    += -DENABLE_NEON
+# for AVX
+CFLAGS    += -DENABLE_AVX -mavx -mavx2
 
 # for OpenH264
-LDFLAGS   += -L./lib/aarch64-linux -lopenh264
-LDFLAGS   += -Wl,-rpath,./lib/aarch64-linux
+LDFLAGS   += lib/x86-msvcrt/openh264-2.0.0-win32.dll
+LDFLAGS   += -Wl,-rpath,lib/x86-msvcrt
 
 # for OpenMP
-CFLAGS    += -fopenmp -pthread
-LDFLAGS   += -lgomp -lpthread
+#CFLAGS    += -fopenmp -pthread
+#LDFLAGS   += -lgomp -lpthread
 
 CSRC      := main.c \
              h264dec.c \

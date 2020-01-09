@@ -1,5 +1,5 @@
 CFLAGS    += -O2 -g -I./include -fPIC
-#CFLAGS    += -DBENCHMARK
+CFLAGS    += -DBENCHMARK
 
 CSRC      := main.c \
              h264dec.c \
