@@ -102,7 +102,7 @@ shrink_test(int n)
     }
 
     fprintf(fp, "P6\n# %s\n%d %d\n255\n", path2, wd2, ht2);
-    fwrite(rgb2, wd2 * st2, 1, fp);
+    fwrite(rgb2, st2 * ht2, 1, fp);
 
 #if 0
     err = write_png_file(rgb2, wd2, ht2, st2, path2);
