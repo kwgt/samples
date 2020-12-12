@@ -8,7 +8,7 @@
 #
 
 require 'pathname'
-require 'bmp/bmp'
+require 'bmp/bmp.so'
 
 class BMP
   class << self
@@ -59,20 +59,49 @@ class BMP
         raise("invalid header")
       end
 
+      ret.freeze
+
       return ret
 
     ensure
       io&.close
     end
 
+    def compression_type(v)
+      case v
+      when 0
+        ret = :BI_RGB
+
+      when 1
+        ret = :BI_RLE8
+
+      when 2
+        ret = :BI_RLE8
+
+      when 3
+        ret = :BI_BITFIELDS
+
+      when 4
+        ret = :BI_JPEG
+
+      when 5
+        ret = :BI_PNG
+      else
+        raise("unknwon compression type #{v}")
+      end
+
+      return ret
+    end
+
     def read_os2_header(io, h)
-      tmp = io.read(8).unpack("s<s<S<S<")
+      tmp = io.read(12).unpack("s<s<S<S<L<")
 
       h[:type]          = :OS2
       h[:img_width]     = tmp[0]
       h[:img_height]    = tmp[1]
       h[:planes]        = tmp[2]
       h[:bit_count]     = tmp[3]
+      h[:compression]   = compression_type(tmp[4])
 
       tmp = h[:offset] - (14 + 12)
       raise("broken header") if tmp < 0
@@ -114,7 +143,7 @@ class BMP
       h[:img_height]    = tmp[1]
       h[:planes]        = tmp[2]
       h[:bit_count]     = tmp[3]
-      h[:compression]   = tmp[4]
+      h[:compression]   = compression_type(tmp[4])
       h[:img_size]      = tmp[5]
       h[:x_resolution]  = tmp[6]
       h[:y_resolution]  = tmp[7]
@@ -203,6 +232,10 @@ class BMP
 
   def height
     return @header[:img_height]
+  end
+
+  def bit_count
+    return @header[:bit_count]
   end
 
   def data
