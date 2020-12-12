@@ -9,7 +9,6 @@
 #define DATABASE  "test"
 #define WIDTH     160
 #define HEIGHT    160
-#endif
 
 void i420_to_rgb(uint8_t* y, uint8_t* u, uint8_t* v,
                              int wd, int ht, uint8_t* rgb);
