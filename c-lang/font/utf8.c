@@ -33,7 +33,6 @@ int
 utf8_len(char* s)
 {
   int ret;
-  char c;
 
   /*
    * initialize
@@ -80,7 +79,6 @@ int
 utf8_dec(char* src, char32_t * dst)
 {
   int ret;
-  int i;
   char32_t w;
 
   /*
@@ -107,8 +105,6 @@ utf8_dec(char* src, char32_t * dst)
    * decode UTF-8 to unicode
    */
   if (!ret) {
-    i = 0;
-
     while (src[0] != '\0') {
       if (IS_7BITS(src)) {
         w = src[0] & 0x7f;

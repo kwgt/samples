@@ -63,7 +63,7 @@ put_string(fontset_t* fs, int x, int y, char* cs)
     dst -= (WIDTH * (gl->bbox.ht - 1));
 
     // ビットマップデータを展開
-    src = gl->bmap;
+    src = (uint8_t*)gl->bmap;
     msk = 0x80;
 
     for (j = 0; j < gl->bbox.ht; j++) {

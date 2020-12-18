@@ -81,7 +81,7 @@ find_glyph(fontset_t* fs, char32_t targ, glyph_t** dst)
      * head == tailの時に、一致した物が見つかる可能性
      * についてはここでフォローしている
      */
-    *dst = ((targ == code)? fs->map[pos].glyph: fs->fallback);
+    *dst = (glyph_t*)((targ == code)? fs->map[pos].glyph: fs->fallback);
   }
 
   return ret;

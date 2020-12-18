@@ -7,8 +7,8 @@
 #include <uchar.h>
 
 typedef struct {
-  char* name;
-  char* charset;
+  const char* name;
+  const char* charset;
   int size;
   int ascent;
   int decent;
@@ -22,7 +22,7 @@ typedef struct {
 } font_t;
 
 typedef struct {
-  font_t* font;
+  const font_t* font;
   uint8_t wd;
 
   struct {
@@ -32,12 +32,12 @@ typedef struct {
     int y;
   } bbox;
 
-  uint8_t bmap[];
+  const uint8_t bmap[];
 } glyph_t;
 
 typedef struct {
   char16_t code;
-  glyph_t* glyph;
+  const glyph_t* glyph;
 } code_entry_t;
 
 typedef struct {
@@ -45,10 +45,10 @@ typedef struct {
   int ascent;
   int decent;
 
-  font_t** fonts;
-  glyph_t* fallback;
+  const font_t** fonts;
+  const glyph_t* fallback;
 
-  code_entry_t* map;
+  const code_entry_t* map;
   size_t n;
 } fontset_t;
 
