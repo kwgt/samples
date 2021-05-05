@@ -21,4 +21,9 @@ int cronog_start(cronog_t* ptr);
 int cronog_stop(cronog_t* ptr);
 int cronog_reset(cronog_t* ptr);
 int cronog_result(cronog_t* ptr, int64_t* dst);
+
+#define cronog_measure(ptr, dura) \
+  switch (cronog_start(ptr)) \
+    for(;cronog_stop(ptr) || cronog_result(ptr,dura) || cronog_reset(ptr);) \
+      case 0:
 #endif /* !defined(__CRONOG_T__) */

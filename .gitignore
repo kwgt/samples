@@ -56,4 +56,5 @@ dkms.conf
 .DS_Store
 
 # data folder
-*/data/
+*/**/data/
+*/**/tmp/

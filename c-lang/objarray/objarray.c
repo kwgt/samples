@@ -286,6 +286,41 @@ objary_push(objary_t* ptr, void* obj)
 
   return ret;
 }
+int
+objary_shift(objary_t* ptr, void** dst)
+{
+  int ret;
+
+  /*
+   * initialize
+   */
+  ret = 0;
+
+  /*
+   * check argument
+   */
+  if (ptr == NULL) ret = DEFAULT_ERROR;
+
+  /*
+   * resize core
+   */
+  if (!ret) {
+    if (ptr->size > DEFAULT_SIZE && ptr->size < (ptr->capa / 2)) {
+      ret = resize(ptr, ptr->size);
+    }
+  }
+
+  /*
+   * shift object
+   */
+  if (!ret) {
+    ptr->size--;
+    if (dst != NULL) *dst = ptr->t[0];
+    memmove(ptr->t, ptr->t + 1, sizeof(void*) * ptr->size);
+  }
+
+  return ret;
+}
 
 int
 objary_pop(objary_t* ptr, void** dst)

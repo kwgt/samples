@@ -9,8 +9,8 @@ require 'pathname'
 
 class PGM
   class << self
-    DIGIT = "0123456789"
-    SPACE = " \t\r\n\f\v"
+    DIGIT = "0123456789".b
+    SPACE = " \t\r\n\f\v".b
 
     def open(src)
       case src

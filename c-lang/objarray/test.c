@@ -11,6 +11,7 @@ main(int argc, char* argv[])
   char* s;
   int i;
 
+#if 0
   printf("***\n");
   objary_new(&a);
   objary_aset(a, 0, "abc");
@@ -55,6 +56,27 @@ main(int argc, char* argv[])
   objary_remove(a, 1, (void**)&s);
   printf("- %s\n", s);
   objary_each(a, i, s) printf("%d %s\n", i, s);
+  objary_destroy(a);
+#endif
+
+  printf("***\n");
+  objary_new(&a);
+  objary_push(a, "abc");
+  objary_push(a, "def");
+  objary_push(a, "ghi");
+  objary_each(a, i, s) printf("%s ", s);
+  printf("\n");
+
+  printf("-\n");
+  objary_shift(a, NULL);
+  objary_each(a, i, s) printf("%s ", s);
+  printf("\n");
+  objary_shift(a, NULL);
+  objary_each(a, i, s) printf("%s ", s);
+  printf("\n");
+  objary_shift(a, NULL);
+  objary_each(a, i, s) printf("%s ", s);
+  printf("\n");
   objary_destroy(a);
 
   return 0;

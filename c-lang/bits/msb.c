@@ -33,5 +33,13 @@ main(int argc, char* argv[])
   printf("%d\n", msb(0x28300));
   printf("%d\n", msb(0x40000000));
   printf("%d\n", msb(0xf0f00000));
+
+  {
+    int i;
+
+    for (i = 0; i < 32; i++) {
+      printf("%08x %d\n", 1 << i, msb(1 << i));
+    }
+  }
   return 0;
 }

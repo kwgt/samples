@@ -21,6 +21,7 @@ int objary_aset(objary_t* ptr, int i, void* obj);
 int objary_aref(objary_t* ptr, int i, void** dst);
 int objary_push(objary_t* ptr, void* obj);
 int objary_pop(objary_t* ptr, void** dst);
+int objary_shift(objary_t* ptr, void** dst);
 int objary_remove(objary_t* ptr, int i, void** dst);
 
 #define objary_len(a)       ((a)->size)

@@ -10,8 +10,35 @@
 #define WIDTH     160
 #define HEIGHT    160
 
-void i420_to_rgb(uint8_t* y, uint8_t* u, uint8_t* v,
-                             int wd, int ht, uint8_t* rgb);
+#define ROTATE0   0x00000000
+#define ROTATE90  0x00000001
+#define ROTATE180 0x00000002
+#define ROTATE270 0x00000003
+#define FLIP      0x00000080
+
+void i420_to_rgb_0(uint8_t* y, uint8_t* u, uint8_t* v,
+                   int wd, int ht, uint8_t* rgb);
+
+void i420_to_rgb_0f(uint8_t* y, uint8_t* u, uint8_t* v,
+                    int wd, int ht, uint8_t* rgb);
+
+void i420_to_rgb_90(uint8_t* y, uint8_t* u, uint8_t* v,
+                    int wd, int ht, uint8_t* rgb);
+
+void i420_to_rgb_90f(uint8_t* y, uint8_t* u, uint8_t* v,
+                     int wd, int ht, uint8_t* rgb);
+
+void i420_to_rgb_180(uint8_t* y, uint8_t* u, uint8_t* v,
+                     int wd, int ht, uint8_t* rgb);
+
+void i420_to_rgb_180f(uint8_t* y, uint8_t* u, uint8_t* v,
+                      int wd, int ht, uint8_t* rgb);
+
+void i420_to_rgb_270(uint8_t* y, uint8_t* u, uint8_t* v,
+                     int wd, int ht, uint8_t* rgb);
+
+void i420_to_rgb_270f(uint8_t* y, uint8_t* u, uint8_t* v,
+                      int wd, int ht, uint8_t* rgb);
 
 typedef struct {
   long long tm;
@@ -123,13 +150,13 @@ main(int argc, char* argv[])
 
   start_timer(&tm);
   for (i = 0; i < 200; i++) {
-    i420_to_rgb(y, u, v, WIDTH, HEIGHT, rgb);
+    i420_to_rgb_270f(y, u, v, WIDTH, HEIGHT, rgb);
   }
   stop_timer(&tm);
 
   fprintf(stderr, "%10.2f msec\n", tm.tm / 1000000.0);
 
-  fp = fopen("test1.ppm", "wb");
+  fp = fopen("test4.ppm", "wb");
   fprintf(fp, "P6\n#test\n%d %d\n255\n", WIDTH, HEIGHT);
   fwrite(rgb, WIDTH * HEIGHT * 3, 1, fp);
   fclose(fp);
