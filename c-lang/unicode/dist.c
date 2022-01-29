@@ -15,8 +15,8 @@
 #define ALLOC(t)          ((t*)malloc(sizeof(t)))
 #define NALLOC(t,n)       ((t*)malloc(sizeof(t)* (n)))
 
-static char32_t
-min3(char32_t a, char32_t b, char32_t c)
+static int
+min3(int a, int b, int c)
 {
   return (a > b)? ((b > c)? c: b) : ((a > c)? c: a);
 }
@@ -28,14 +28,14 @@ calc_dist(char32_t* uc1, size_t n1, char32_t* uc2, size_t n2, int* dst)
   int w;
   int h;
 
-  char32_t* tbl;
-  char32_t* p;
+  int* tbl;
+  int* p;
 
   int i;
   int j;
 
-  char32_t b;
-  char32_t c;
+  int b;
+  int c;
 
   /*
    * initialize 
@@ -47,7 +47,7 @@ calc_dist(char32_t* uc1, size_t n1, char32_t* uc2, size_t n2, int* dst)
   /*
    * work memory allocate
    */
-  tbl = NALLOC(char32_t, w * h);
+  tbl = NALLOC(int, w * h);
   if (tbl == NULL) ret = DEFAULT_ERROR;
 
   /*

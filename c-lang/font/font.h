@@ -10,8 +10,8 @@ typedef struct {
   const char* name;
   const char* charset;
   int size;
-  int ascent;
   int decent;
+  int ascent;
 
   struct {
     int wd;
@@ -42,8 +42,8 @@ typedef struct {
 
 typedef struct {
   int size;
-  int ascent;
   int decent;
+  int ascent;
 
   const font_t** fonts;
   const glyph_t* fallback;
@@ -53,6 +53,5 @@ typedef struct {
 } fontset_t;
 
 extern int find_glyph(fontset_t* fs, char32_t targ, glyph_t** dst);
-
 #endif /* !defined(__FONT_H__) */
 

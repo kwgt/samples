@@ -143,15 +143,17 @@ jpeg_encoder_new(size_t wd, size_t ht, size_t st, jpeg_encoder_t** dst)
    * setup context
    */
   if (!ret) {
+    cinfo->err = jpeg_std_error(&error->jerr);
+
     error->jerr.output_message = output_message;
     error->jerr.emit_message   = emit_message;
     error->jerr.error_exit     = error_exit;
 
     for (i = 0; i < UNIT_LINES; i++) array[i] = rows + (i * wd * 3);
 
-    obj->width  = wd;
-    obj->height = ht;
-    obj->stride = (st != 0)? st: (wd * 3);
+    obj->width  = (int)wd;
+    obj->height = (int)ht;
+    obj->stride = (int)((st != 0)? st: (wd * 3));
     obj->cinfo  = cinfo;
     obj->array  = array;
     obj->rows   = rows;
@@ -259,7 +261,6 @@ jpeg_encoder_encode(jpeg_encoder_t* ptr, void* src, void** dst, size_t *dsz)
     cinfo = ptr->cinfo;
 
     if (!setjmp(ptr->error->jmpbuf)) {
-      cinfo->err = jpeg_std_error(&ptr->error->jerr);
       jpeg_create_compress(cinfo);
 
     } else {

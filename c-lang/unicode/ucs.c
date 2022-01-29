@@ -47,7 +47,7 @@ utf8_len(char* src, size_t* dst)
    * count UCS length
    */
   if (!ret) {
-    while (c = *src) {
+    while ((c = *src)) {
       if ((c & 0xf8) == 0xf0) {         // 1111 0xxx
         /*
          * when 21bit (use 4 octets)
@@ -97,7 +97,6 @@ int
 utf8_extract(char* src, char32_t* dst)
 {
   int ret;
-  int err;
   char32_t cp;
   size_t sz;
   int c;
@@ -126,7 +125,7 @@ utf8_extract(char* src, char32_t* dst)
    * convert to codepoint list
    */
   if (!ret) {
-    while (c = *src) {
+    while ((c = *src)) {
       if ((c & 0xf8) == 0xf0) {         // 1111 0xxx
         /*
          * when 21bit (use 4 octets)
@@ -183,7 +182,6 @@ utf8_to_ucs(char* src, char32_t** dst, size_t* dsz)
   int ret;
   int err;
   char32_t* ucs;
-  int i;
   size_t n;
 
   /*

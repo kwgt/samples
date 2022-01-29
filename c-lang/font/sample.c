@@ -12,6 +12,8 @@
 #define WIDTH           200
 #define HEIGHT          200
 
+#define USE_FONT        font_k8x12
+
 extern fontset_t font_h10r;
 extern fontset_t font_f10r;
 extern fontset_t font_h10b;
@@ -20,7 +22,44 @@ extern fontset_t font_h12r;
 extern fontset_t font_f12r;
 extern fontset_t font_h12b;
 extern fontset_t font_f12b;
+extern fontset_t font_shnm12;
+extern fontset_t font_shnm12b;
+extern fontset_t font_shnm14;
+extern fontset_t font_shnm14b;
+extern fontset_t font_shnm16;
+extern fontset_t font_shnm16b;
+extern fontset_t font_ayu18;
+extern fontset_t font_ayu18b;
+extern fontset_t font_ayu20;
+extern fontset_t font_ayu20b;
+extern fontset_t font_k8x12;
 uint8_t bmap[WIDTH * HEIGHT];
+
+void
+measure_string(fontset_t* fs, char* cs, int* dd, int* da, int* dw)
+{
+  char32_t* us;
+  glyph_t* gl;
+  int i;
+  int n;
+  int w;
+
+  n  = utf8_len((char*)cs);
+  us = (char32_t*)malloc(sizeof(char32_t) * n);
+  utf8_dec((char*)cs, us);
+
+  w = 0;
+  for (i = 0; i < n; i++) {
+    find_glyph(fs, us[i], &gl);
+    w += gl->wd;
+  }
+
+  if (dd != NULL) *dd = fs->decent;
+  if (da != NULL) *da = fs->ascent;
+  if (dw != NULL) *dw = w;
+
+  free(us);
+}
 
 void
 put_string(fontset_t* fs, int x, int y, char* cs)
@@ -95,13 +134,17 @@ put_string(fontset_t* fs, int x, int y, char* cs)
 int
 main(int argc, char* argv[])
 {
+  int d;
+  int a;
+  int w;
+
   memset(bmap, 0xe0, sizeof(bmap));
 
-  put_string(&font_h12r, 3, 36, "abcdefghij 12345 あっぱれ");
-  put_string(&font_h12r, 3, 70, "ABCDEFGHIJ 67890 天晴");
-  put_string(&font_h12b, 3, 104, "abcdefghij 12345 残念");
-  put_string(&font_h12r, 3, 138, "67890 東京特許許可局");
-  put_string(&font_h12b, 3, 172, "67890 東京特許許可局");
+  put_string(&USE_FONT, 20, 35, "設定完了");
+  put_string(&USE_FONT, 20, 54, "2021/9/8 15:53:08");
+
+  measure_string(&USE_FONT, "電池残量 70%", &d, &a, &w);
+  put_string(&USE_FONT, 200 - w, 200 - d, "電池残量 70%");
 
   write_png_file(bmap, WIDTH, HEIGHT, WIDTH, "afo.png");
 

@@ -114,6 +114,8 @@ jpeg_decoder_new(jpeg_decoder_t** dst)
    * set initial values
    */
   if (!ret) {
+    cinfo->err = jpeg_std_error(&ptr->error->jerr);
+
     error->jerr.output_message = decode_output_message;
     error->jerr.emit_message   = decode_emit_message;
     error->jerr.error_exit     = decode_error_exit;
@@ -217,7 +219,6 @@ jpeg_decoder_decode(jpeg_decoder_t* ptr,
     cinfo = ptr->cinfo;
 
     if (!setjmp(ptr->error->jmpbuf)) {
-      cinfo->err = jpeg_std_error(&ptr->error->jerr);
       jpeg_create_decompress(cinfo);
 
     } else {
@@ -233,7 +234,7 @@ jpeg_decoder_decode(jpeg_decoder_t* ptr,
     array = ptr->array;
 
     if (!setjmp(ptr->error->jmpbuf)) {
-      jpeg_mem_src(cinfo, src, size);
+      jpeg_mem_src(cinfo, src, (unsigned long)size);
       jpeg_read_header(cinfo, TRUE);
 
       cinfo->raw_data_out             = FALSE;
@@ -253,7 +254,6 @@ jpeg_decoder_decode(jpeg_decoder_t* ptr,
       cinfo->enable_2pass_quant       = FALSE;
 
       jpeg_calc_output_dimensions(cinfo);
-
       jpeg_start_decompress(cinfo);
 
       width  = cinfo->output_width;
