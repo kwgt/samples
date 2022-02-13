@@ -21,7 +21,7 @@ encode64(void* src, size_t sz, char* prefix, char** dst)
     'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
     'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
     'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '+', '/',
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/',
   };
 
   /*
@@ -127,7 +127,7 @@ encode64(void* src, size_t sz, char* prefix, char** dst)
   return ret;
 }
 
-#if 0
+#if 1
 int
 main(int argc, char* argv[])
 {
@@ -137,6 +137,14 @@ main(int argc, char* argv[])
   s   = NULL;
   err = encode64("ABCDEFG", 7, NULL, &s);
   printf("err = %d, %s\n", err, s);
+
+  if (s != NULL) free(s);
+
+  s   = NULL;
+  err = encode64("ABCDEFG", 7, "data:image/jpeg;", &s);
+  printf("err = %d, %s\n", err, s);
+
+  if (s != NULL) free(s);
 
   return 0;
 }
