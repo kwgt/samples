@@ -114,7 +114,7 @@ jpeg_decoder_new(jpeg_decoder_t** dst)
    * set initial values
    */
   if (!ret) {
-    cinfo->err = jpeg_std_error(&ptr->error->jerr);
+    cinfo->err = jpeg_std_error(&error->jerr);
 
     error->jerr.output_message = decode_output_message;
     error->jerr.emit_message   = decode_emit_message;
@@ -190,7 +190,7 @@ jpeg_decoder_decode(jpeg_decoder_t* ptr,
    * initialize
    */
   ret = 0;
-  row = NULL;
+  raw = NULL;
 
   /*
    * argument check
