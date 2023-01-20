@@ -530,6 +530,8 @@ hmap_clear(hmap_t* ptr)
         break;
       }
     }
+
+    ptr->used = 0;
   }
 
   return ret;

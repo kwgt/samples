@@ -1,0 +1,80 @@
+#
+# データベースへのアクセス設定
+#
+database:
+  sqlite3:
+    path:     ~/lib/envlog.db
+
+  #mysql:
+  #  host:     db3.local
+  #  username: envlog
+  #  password: S1H9-P64A-KUO6
+  #  database: envlog.db
+  #  encoding: utf8
+
+#
+# loggerのデータの入力ソース設定
+# ※envlog-loggerのみ参照します
+#
+source:
+  - type:      serial
+    port:      /dev/ttyUSB0
+    baud:      115200
+    data_bits: 8
+
+#  - type:      udp
+#    bind:      "::"
+#    port:      1234
+
+#  - type:      tcp
+#    bind:      "::"
+#    port:      1234
+
+#
+# viewerのwebサーバの設定
+# ※envlog-viewerのみ参照します
+#
+webserver:
+  bind:        "::"
+  port:       
+    http:      2564
+    ws:        2565
+
+  #この項目を定義した場合はHTTPSでサービスを行います
+  #tls:
+  #  cert:      ~/lib/envlog/server.crt
+  #  key:       ~/lib/envlog/server.key
+
+  #この項目を定義した場合はダイジェスト認証による認証を行います
+  #auth:        ~/lib/envlog/passwd.yml
+
+#
+# viewerのグラフの設定
+# ※envlog-viewerのみ参照します
+#
+graph:
+  #
+  # 数値の表示範囲
+  #
+  range:
+    temp:           # 気温 (°C)
+      min:    5
+      max:    40
+    r/h:            # 相対湿度 (%)
+      min:    30
+      max:    90
+    v/h:            # 絶対湿度 (g/m^3)
+      min:    5
+      max:    40
+    a/p:            # 気圧 (hpa)
+      min:    995
+      max:    1020
+
+#
+# ログ出力設定
+#
+log:
+  file:        log.txt
+  shift_age:   weekly
+  shift_size:  100_000
+  level:       INFO

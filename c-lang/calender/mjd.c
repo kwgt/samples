@@ -1,9 +1,11 @@
 ﻿#include <stdio.h>
 #include <math.h>
+#include <time.h>
 
 #define DEFAULT_ERROR     __LINE__
+#define EPOCH_MJD         40587         /* MJD at 1970/1/1 */
 
-int
+static int
 is_valid_date(int y, int m, int d)
 {
   int ret;
@@ -189,6 +191,55 @@ mjd2gc(long mjd, int* dy, int* dm, int* dd)
   return ret;
 }
 
+int
+gc2ut(int y, int m, int d, int tzoff, time_t* dst)
+{
+  int ret;
+  int err;
+  long mjd;
+  time_t ut;
+
+  /*
+   * initialize
+   */
+  ret = 0;
+
+  /*
+   * argument check
+   */
+  do {
+    if (y <= 0) {
+      ret = DEFAULT_ERROR;
+      break;
+    }
+
+    if (m <= 0 || m > 12) {
+      ret = DEFAULT_ERROR;
+      break;
+    }
+
+    if (!is_valid_date(y, m, d)) {
+      ret = DEFAULT_ERROR;
+      break;
+    }
+  } while (0);
+
+  /*
+   * convert to MJD
+   */
+  if (!ret) {
+    err = gc2mjd(y, m, d, &mjd);
+    if (err) ret = DEFAULT_ERROR;
+  }
+
+  /*
+   * put return parameter
+   */
+  if (!ret) *dst = ((mjd - EPOCH_MJD) * 86400) - tzoff; 
+
+  return ret;
+}
+
 #if 1
 int
 main(int argc, char* argv[])
@@ -198,6 +249,7 @@ main(int argc, char* argv[])
   int y;
   int m;
   int d;
+  time_t ut;
 
   err = gc2mjd(1970, 12, 29, &mjd);
   printf("%d %ld\n", err, mjd);
@@ -210,6 +262,10 @@ main(int argc, char* argv[])
 
   err = mjd2gc(mjd, &y, &m, &d);
   printf("%d %d %d %d\n", err, y, m ,d);
+
+  err = gc2ut(2022, 6, 1, 32400, &ut);
+  printf("%d %d\n", err, ut);
+
 
   return 0;
 }
