@@ -1,10 +1,9 @@
 [package]
-name = "yaml_to_json"
+name = "serde_yaml_to_json"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-yaml-rust = "0.4"
-yaml-merge-keys = "0.5"
+serde_yaml = "0.9"
